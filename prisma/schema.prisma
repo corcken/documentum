@@ -1,0 +1,231 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ─────────────────────────────────────────────
+// Enumerationen
+// ─────────────────────────────────────────────
+
+enum DocumentStatus {
+  Draft
+  In_Review
+  In_Approval
+  Released
+  Archived
+}
+
+enum WorkflowTaskType {
+  Review
+  Approval
+}
+
+enum WorkflowTaskStatus {
+  Pending
+  Approved
+  Rejected
+}
+
+enum TrainingStatus {
+  Assigned
+  Completed
+  // 'Overdue' wird berechnet (dueDate < heute && Assigned), nicht gespeichert
+}
+
+// ─────────────────────────────────────────────
+// Organisation
+// ─────────────────────────────────────────────
+
+// Abteilungsbaum: parentId = übergeordnete Abteilung (beliebig tief)
+model Department {
+  id              String            @id @default(cuid())
+  parentId        String?
+  parent          Department?       @relation("DepartmentTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children        Department[]      @relation("DepartmentTree")
+  name            String
+  abbreviation    String?
+  description     String?
+  users           User[]
+  scopedDocuments ScopeDepartment[]
+}
+
+model JobRole {
+  id              String         @id @default(cuid())
+  name            String         @unique
+  description     String?
+  users           User[]
+  scopedDocuments ScopeJobRole[]
+}
+
+// Systemrolle (ADMIN, EDITOR, VIEWER …)
+model Role {
+  id          String @id @default(cuid())
+  name        String @unique
+  permissions String
+  users       User[]
+}
+
+// Vorläufig (aus Scaffold) — wird evtl. durch Department ersetzt
+model Group {
+  id    String @id @default(cuid())
+  name  String @unique
+  users User[]
+}
+
+model User {
+  id       String  @id @default(cuid())
+  username String? @unique
+  email    String  @unique
+  password String // bcrypt-Hash
+  name     String?
+  isActive Boolean @default(true)
+
+  roleId       String?
+  role         Role?       @relation(fields: [roleId], references: [id])
+  groupId      String?
+  group        Group?      @relation(fields: [groupId], references: [id])
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  jobRoleId    String?
+  jobRole      JobRole?    @relation(fields: [jobRoleId], references: [id])
+
+  ownedDocuments  Document[]        @relation("DocumentOwner")
+  createdVersions DocumentVersion[] @relation("VersionCreator")
+  workflowTasks   WorkflowTask[]    @relation("TaskAssignee")
+  trainingRecords TrainingRecord[]
+  auditLogs       AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// Dokumentenkern
+// ─────────────────────────────────────────────
+
+model DocumentType {
+  id               String     @id @default(cuid())
+  name             String     @unique
+  requiresTraining Boolean    @default(false)
+  documents        Document[]
+}
+
+model Document {
+  id             String            @id @default(cuid())
+  documentNumber String            @unique
+  typeId         String?
+  type           DocumentType?     @relation(fields: [typeId], references: [id])
+  ownerId        String?
+  owner          User?             @relation("DocumentOwner", fields: [ownerId], references: [id])
+  versions       DocumentVersion[]
+  createdAt      DateTime          @default(now())
+}
+
+model DocumentVersion {
+  id            String         @id @default(cuid())
+  documentId    String
+  document      Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  versionNumber String
+  title         String
+  content       String? // TipTap JSON/HTML (Editor-Dokumente)
+  filePath      String? // Upload-Dateien (Formblätter, Prüfprotokolle …)
+  status        DocumentStatus @default(Draft)
+  effectiveDate DateTime?
+  obsoleteDate  DateTime?
+  createdAt     DateTime       @default(now())
+  createdById   String?
+  createdBy     User?          @relation("VersionCreator", fields: [createdById], references: [id])
+
+  scopeDepartments ScopeDepartment[]
+  scopeJobRoles    ScopeJobRole[]
+  workflowTasks    WorkflowTask[]
+  trainingRecords  TrainingRecord[]
+
+  @@unique([documentId, versionNumber])
+}
+
+// ─────────────────────────────────────────────
+// Geltungsbereich (Scope)
+// ─────────────────────────────────────────────
+
+// Scope expandiert nach unten: Abteilung + alle Unterabteilungen (Entscheidung 31.08.2026)
+model ScopeDepartment {
+  documentVersionId String
+  documentVersion   DocumentVersion @relation(fields: [documentVersionId], references: [id], onDelete: Cascade)
+  departmentId      String
+  department        Department      @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@id([documentVersionId, departmentId])
+}
+
+model ScopeJobRole {
+  documentVersionId String
+  documentVersion   DocumentVersion @relation(fields: [documentVersionId], references: [id], onDelete: Cascade)
+  jobRoleId         String
+  jobRole           JobRole         @relation(fields: [jobRoleId], references: [id], onDelete: Cascade)
+
+  @@id([documentVersionId, jobRoleId])
+}
+
+// ─────────────────────────────────────────────
+// Workflow (Review → Approval)
+// ─────────────────────────────────────────────
+
+model WorkflowTask {
+  id                String             @id @default(cuid())
+  documentVersionId String
+  documentVersion   DocumentVersion    @relation(fields: [documentVersionId], references: [id], onDelete: Cascade)
+  assignedToId      String?
+  assignedTo        User?              @relation("TaskAssignee", fields: [assignedToId], references: [id])
+  taskType          WorkflowTaskType
+  status            WorkflowTaskStatus @default(Pending)
+  comments          String?
+  createdAt         DateTime           @default(now())
+  completedAt       DateTime?
+}
+
+// ─────────────────────────────────────────────
+// Schulungs-Nachverfolgung
+// ─────────────────────────────────────────────
+
+// Eine Zeile pro (Dokumentversion, User): „Wer muss die Schulung machen“ → „Wer hat sie erledigt“
+model TrainingRecord {
+  id                  String          @id @default(cuid())
+  documentVersionId   String
+  documentVersion     DocumentVersion @relation(fields: [documentVersionId], references: [id], onDelete: Cascade)
+  userId              String
+  user                User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status              TrainingStatus  @default(Assigned)
+  assignedAt          DateTime        @default(now())
+  dueDate             DateTime
+  completedAt         DateTime?
+  // Nachweis: Name, Zeitstempel, gelesene Version (JSON)
+  electronicSignature Json?
+
+  @@unique([documentVersionId, userId])
+}
+
+// ─────────────────────────────────────────────
+// Audit-Trail (vollumfänglich)
+// ─────────────────────────────────────────────
+
+// Protokolliert ALLE Änderungen: wer, wann, was (vorher/nachher)
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String // CREATE, UPDATE, STATUS_CHANGE, RELEASE, APPROVE, REJECT, ASSIGN_TRAINING, COMPLETE_TRAINING, …
+  entityType String // Document, DocumentVersion, WorkflowTask, TrainingRecord, Scope, User, Department …
+  entityId   String
+  before     Json? // Zustand vor der Änderung
+  after      Json? // Zustand nach der Änderung
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+}
