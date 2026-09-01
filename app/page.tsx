@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { loginAction } from "@/app/actions"
 import { auth } from "@/auth"
+import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
 
 export default async function LoginPage({
@@ -12,9 +13,25 @@ export default async function LoginPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
   const session = await auth()
-  
+
   if (session?.user) {
-    redirect("/dashboard")
+    const userExists = session.user.id
+      ? await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { id: true },
+        })
+      : null
+
+    if (userExists) {
+      // Gültige Session: weiter zum Dashboard.
+      redirect("/dashboard")
+    }
+
+    // Verwaiste Session (User existiert nicht mehr, z. B. nach DB-Reset):
+    // über den Cleanup-Route-Handler das JWT-Cookie entsorgen lassen,
+    // damit kein Redirect-Loop entsteht. Server Components dürfen Cookies
+    // nicht selbst ändern.
+    redirect("/api/auth/cleanup")
   }
 
   const { error } = await searchParams;

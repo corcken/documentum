@@ -1,7 +1,7 @@
 import { requireUser } from "@/lib/auth-guard"
 import { AppHeader } from "@/components/app-header"
 
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function KontoLayout({ children }: { children: React.ReactNode }) {
   await requireUser()
 
   return (

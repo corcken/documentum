@@ -95,6 +95,8 @@ model User {
 
   ownedDocuments  Document[]        @relation("DocumentOwner")
   createdVersions DocumentVersion[] @relation("VersionCreator")
+  reviewedVersions DocumentVersion[] @relation("VersionReviewer")
+  approvedVersions DocumentVersion[] @relation("VersionApprover")
   workflowTasks   WorkflowTask[]    @relation("TaskAssignee")
   trainingRecords TrainingRecord[]
   auditLogs       AuditLog[]
@@ -126,26 +128,33 @@ model Document {
 }
 
 model DocumentVersion {
-  id            String         @id @default(cuid())
+  id            String             @id @default(cuid())
   documentId    String
-  document      Document       @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  versionNumber String
+  document      Document           @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  majorVersion  Int
+  minorVersion  Int
   title         String
   content       String? // TipTap JSON/HTML (Editor-Dokumente)
   filePath      String? // Upload-Dateien (Formblätter, Prüfprotokolle …)
-  status        DocumentStatus @default(Draft)
+  status        DocumentStatus     @default(Draft)
   effectiveDate DateTime?
   obsoleteDate  DateTime?
-  createdAt     DateTime       @default(now())
+  createdAt     DateTime           @default(now())
   createdById   String?
-  createdBy     User?          @relation("VersionCreator", fields: [createdById], references: [id])
+  createdBy     User?              @relation("VersionCreator", fields: [createdById], references: [id])
+
+  // Workflow-Zuordnung: Wer prüft (Review), wer gibt frei (Approval).
+  reviewerId String?
+  reviewer   User? @relation("VersionReviewer", fields: [reviewerId], references: [id])
+  approverId String?
+  approver   User? @relation("VersionApprover", fields: [approverId], references: [id])
 
   scopeDepartments ScopeDepartment[]
   scopeJobRoles    ScopeJobRole[]
   workflowTasks    WorkflowTask[]
   trainingRecords  TrainingRecord[]
 
-  @@unique([documentId, versionNumber])
+  @@unique([documentId, majorVersion, minorVersion])
 }
 
 // ─────────────────────────────────────────────
@@ -228,4 +237,17 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([userId])
   @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────
+// Einstellungen (Key-Value — Liste wächst dynamisch)
+// ─────────────────────────────────────────────
+
+// Zentrale App-Einstellungen, z. B. auth.mode (standalone|ldap),
+// company.name, training.defaultDueDays … Änderungen laufen über den Audit-Log
+// (entityType "AppSetting", entityId = key).
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }

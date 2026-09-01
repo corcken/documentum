@@ -1,9 +1,8 @@
-import { requireUser } from "@/lib/auth-guard"
+import { requireAdmin } from "@/lib/auth-guard"
 import { AppHeader } from "@/components/app-header"
 
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  await requireUser()
-
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  await requireAdmin()
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
       <AppHeader />
