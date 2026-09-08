@@ -1,0 +1,55 @@
+# Nacharbeit — Review-Protokoll
+
+> **Für den Coding-Agent (Antigravity):** Diese Datei ist das Rückmelde-Protokoll von
+> Hermes (Management/Qualitätskontrolle). Wenn hier **offene Punkte** stehen:
+> zuerst abarbeiten, dann `docs/aufbauplan.md` weiter. Einträge älter als die aktuelle
+> Runde gelten als erledigt (Historie).
+
+---
+
+## 02.09.2026 — Runde 5 (QM & System) — ✅ OK
+
+Verifiziert: Aufgaben 7–9. **Keine offenen Punkte.**
+
+## 02.09.2026 — Runde 6 / U1 (Upload-Fundament) — ✅ OK
+
+Verifiziert: Schema/Migration, Storage-Backend, uploadFile (Limits/Magic Bytes/EXIF/SHA256),
+trash/restore mit Schutz; GC-Fix (`userId: null`) bestätigt. **Keine offenen Punkte.**
+
+---
+
+## 02.09.2026 — Runde 6 / U2+U3 (Download-Pförtner & Bildvarianten) — ⚠️ 4 offene Punkte
+
+**Verifiziert ✅:**
+- **U3:** uploadFile erzeugt Preview (max 1600px) + Thumb (max 200px) als WebP-Varianten
+  (`parentId` + `variant`); physische Dateien korrekt skaliert (Test: Thumb real 200×150),
+  Original bleibt unverändert; trash/restore setzen/entfernen `trashedAt` auch bei Varianten.
+- **U2:** ohne Login → 401; Owner → 200 mit korrektem Content-Type + `inline`; Fremder ohne
+  Bindung → 403; Avatar-Bindung → 200 für alle Eingeloggten; Attachment an Released-Version →
+  200 (Logik Owner/Beteiligte/Released greift, mit Rolle wie von der Route geprüft);
+  Draft + Fremder → 403. tsc grün, Migrationen sauber, Dateien ≤ 300 Zeilen.
+
+**Offene Punkte (alle in `app/api/files/[key]/route.ts`, einer in `lib/services/file.ts`):**
+
+- [x] **1. Tippfehler „attachement" (Route Z. 53 + Schema-Kommentar):** Die Route prüft
+  `use.role === "attachement"` (falsche Schreibweise, stammt aus dem Schema-Kommentar
+  `prisma/schema.prisma`). Wird später in der UI eine Bindung mit korrektem `"attachment"`
+  angelegt (oder der Service), verweigert die Route **still** den Zugriff (403). Beide Stellen
+  auf `"attachment"` normieren (Kommentar + Route).
+- [x] **2. Varianten erben keine Berechtigung:** Preview/Thumb haben keine `FileAssetUse`
+  (nur das Original hat Bindungen) → für Nicht-Owner 403, obwohl das Original freigegeben ist
+  (z. B. Attachment an Released-Version → Original 200, Preview/Thumb 403). Ohne Fix bricht die
+  Bildvorschau in Mediathek/Dokumentansicht für alle Nicht-Owner (U4!). Fix: In der Route bei
+  `asset.parentId` die Berechtigung über das Parent-Original prüfen (dessen Uses + Owner).
+- [x] **3. trashedAt wird nicht geprüft:** Getrashte Dateien (Papierkorb) bleiben per Key
+  abrufbar (200) — Widerspruch zum Lösch-Konzept (`docs/konzept-uploads.md` §6a: Papierkorb =
+  logisch gelöscht). Fix: in der Route `if (asset.trashedAt) return 404` (nach dem Laden).
+- [x] **4. DB-Maße der Varianten falsch (file.ts U3):** `metadata()` wird auf der
+  Sharp-Pipeline VOR `toBuffer()` gelesen → liefert die **Eingangs**-Maße (Test: Preview UND
+  Thumb stehen in der DB mit 800×600, obwohl die Thumb-Datei real 200×150 ist). Fix: Maße nach
+  dem Rendern vom erzeugten Buffer lesen (`const pMeta = await sharp(previewBuffer).metadata()`).
+
+**Hinweis (kein Blocker):** „Released → jeder Eingeloggte darf" in der Route entspricht dem
+aktuellen App-Verhalten (Dokumentenliste filtert Leser nur nach Released, Scope-Filter noch
+nicht aktiv). Wenn die Scope-Sichtbarkeit später scharf geschaltet wird, muss die Route
+synchron nachgezogen werden (Anhänge erben exakt die Sichtbarkeit der Version).

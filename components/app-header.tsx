@@ -1,16 +1,17 @@
 import { auth } from "@/auth"
 import Link from "next/link"
-import { logoutAction } from "@/app/actions"
-import { countMyOpenTasks } from "@/lib/services/document"
-import { Button } from "@/components/ui/button"
+import { countMyOpenTasks } from "@/lib/services/tasks"
+import { getUserAvatar } from "@/lib/services/avatar"
+import { UserMenuDialog } from "@/components/user-menu-dialog"
 
 export async function AppHeader() {
   const session = await auth()
   const isAdmin = session?.user?.role === "ADMIN"
   const openTasks = session?.user?.id ? await countMyOpenTasks(session.user.id) : 0
+  const avatar = session?.user?.id ? await getUserAvatar(session.user.id) : null
 
   return (
-    <header className="flex items-center justify-between border-b bg-white px-6 py-4 shadow-sm">
+    <header className="flex items-center justify-between border-b bg-card text-card-foreground px-6 py-4 shadow-xs">
       <div className="flex items-center gap-8">
         <div className="text-xl font-bold text-blue-600">Documentum</div>
         <nav className="flex items-center gap-4">
@@ -20,6 +21,11 @@ export async function AppHeader() {
           <Link href="/documents" className="text-sm text-gray-600 hover:text-gray-900">
             Dokumente
           </Link>
+          {session?.user?.role !== "VIEWER" && (
+            <Link href="/documents/prueffaellig" className="text-sm text-gray-600 hover:text-gray-900">
+              Prüffällig
+            </Link>
+          )}
           <Link href="/aufgaben" className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900">
             Aufgaben
             {openTasks > 0 && (
@@ -27,6 +33,9 @@ export async function AppHeader() {
                 {openTasks}
               </span>
             )}
+          </Link>
+          <Link href="/mediathek" className="text-sm text-gray-600 hover:text-gray-900">
+            Mediathek
           </Link>
           {isAdmin && (
             <>
@@ -36,28 +45,27 @@ export async function AppHeader() {
               <Link href="/admin/benutzer" className="text-sm text-gray-600 hover:text-gray-900">
                 Benutzer
               </Link>
+              <Link href="/admin/archiv" className="text-sm text-gray-600 hover:text-gray-900">
+                Archiv & Vernichtung
+              </Link>
+              <Link href="/admin/email" className="text-sm text-gray-600 hover:text-gray-900">
+                E-Mail & Vorlagen
+              </Link>
             </>
           )}
         </nav>
       </div>
-      <div className="flex items-center gap-4">
-        <div className="hidden text-sm text-gray-600 md:block">
-          <Link href="/konto" className="hover:text-gray-900">
-            <span className="font-semibold underline-offset-2 hover:underline">
-              {session?.user?.name || session?.user?.email}
-            </span>
-          </Link>
-          {session?.user?.role && (
-            <span className="ml-2 rounded-full bg-blue-100 px-2 py-1 text-xs text-blue-800">
-              {session.user.role}
-            </span>
-          )}
-        </div>
-        <form action={logoutAction}>
-          <Button variant="outline" size="sm" type="submit">
-            Abmelden
-          </Button>
-        </form>
+      <div className="flex items-center gap-3">
+        {session?.user && (
+          <UserMenuDialog
+            user={{
+              name: session.user.name,
+              email: session.user.email,
+              role: session.user.role,
+              avatarStorageKey: avatar?.storageKey,
+            }}
+          />
+        )}
       </div>
     </header>
   )

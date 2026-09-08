@@ -17,6 +17,8 @@ enum DocumentStatus {
   In_Approval
   Released
   Archived
+  Withdrawn
+  Destroyed
 }
 
 enum WorkflowTaskType {
@@ -83,6 +85,8 @@ model User {
   password String // bcrypt-Hash
   name     String?
   isActive Boolean @default(true)
+  isExternal Boolean @default(false)
+  theme      String  @default("hell")
 
   roleId       String?
   role         Role?       @relation(fields: [roleId], references: [id])
@@ -103,6 +107,11 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  fileAssets    FileAsset[]
+  createdUses   FileAssetUse[]    @relation("UseCreator")
+  destructionRequestsRequested DestructionRequest[] @relation("DestructionRequester")
+  destructionRequestsConfirmed DestructionRequest[] @relation("DestructionConfirmer")
 }
 
 // ─────────────────────────────────────────────
@@ -113,6 +122,8 @@ model DocumentType {
   id               String     @id @default(cuid())
   name             String     @unique
   requiresTraining Boolean    @default(false)
+  defaultVisibility String    @default("PUBLIC")
+  retentionMonths   Int       @default(120)
   documents        Document[]
 }
 
@@ -123,6 +134,8 @@ model Document {
   type           DocumentType?     @relation(fields: [typeId], references: [id])
   ownerId        String?
   owner          User?             @relation("DocumentOwner", fields: [ownerId], references: [id])
+  reviewIntervalMonths Int?
+  isTemplate     Boolean           @default(false)
   versions       DocumentVersion[]
   createdAt      DateTime          @default(now())
 }
@@ -136,9 +149,13 @@ model DocumentVersion {
   title         String
   content       String? // TipTap JSON/HTML (Editor-Dokumente)
   filePath      String? // Upload-Dateien (Formblätter, Prüfprotokolle …)
+  changeReason  String?
   status        DocumentStatus     @default(Draft)
+  visibility    String             @default("PUBLIC")
   effectiveDate DateTime?
   obsoleteDate  DateTime?
+  nextReviewDate DateTime?
+  retentionEndDate DateTime?
   createdAt     DateTime           @default(now())
   createdById   String?
   createdBy     User?              @relation("VersionCreator", fields: [createdById], references: [id])
@@ -153,6 +170,8 @@ model DocumentVersion {
   scopeJobRoles    ScopeJobRole[]
   workflowTasks    WorkflowTask[]
   trainingRecords  TrainingRecord[]
+  fileAssetUses    FileAssetUse[]
+  destructionRequests DestructionRequest[]
 
   @@unique([documentId, majorVersion, minorVersion])
 }
@@ -249,5 +268,77 @@ model AuditLog {
 model AppSetting {
   key       String   @id
   value     String
+  updatedAt DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// Uploads / Mediathek (Runde 6)
+// ─────────────────────────────────────────────
+
+model FileAsset {
+  id           String         @id @default(uuid())
+  ownerId      String?
+  owner        User?          @relation(fields: [ownerId], references: [id])
+  originalName String
+  mimeType     String
+  size         Int
+  storageKey   String         @unique
+  sha256       String
+  width        Int?
+  height       Int?
+  variant      String         @default("original") // original, preview, thumb
+  parentId     String?
+  parent       FileAsset?     @relation("FileAssetVariants", fields: [parentId], references: [id], onDelete: Cascade)
+  variants     FileAsset[]    @relation("FileAssetVariants")
+  trashedAt    DateTime?
+  destroyedAt  DateTime?
+  isGlobal     Boolean        @default(false)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  uses         FileAssetUse[]
+}
+
+model FileAssetUse {
+  id                String           @id @default(uuid())
+  fileAssetId       String
+  fileAsset         FileAsset        @relation(fields: [fileAssetId], references: [id], onDelete: Cascade)
+  documentVersionId String?
+  documentVersion   DocumentVersion? @relation(fields: [documentVersionId], references: [id], onDelete: Cascade)
+  role              String // attachment, content_image, external_doc, avatar
+  createdById       String
+  createdBy         User             @relation("UseCreator", fields: [createdById], references: [id])
+  createdAt         DateTime         @default(now())
+}
+
+// ─────────────────────────────────────────────
+// Archiv & Vernichtung (Runde 7)
+// ─────────────────────────────────────────────
+
+model DestructionRequest {
+  id                String          @id @default(uuid())
+  documentVersionId String
+  documentVersion   DocumentVersion @relation(fields: [documentVersionId], references: [id], onDelete: Cascade)
+  requestedById     String
+  requestedBy       User            @relation("DestructionRequester", fields: [requestedById], references: [id])
+  confirmedById     String?
+  confirmedBy       User?           @relation("DestructionConfirmer", fields: [confirmedById], references: [id])
+  status            String          @default("PENDING") // PENDING, EXECUTED, REJECTED
+  comment           String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// E-Mail-Vorlagen (Runde 8)
+// ─────────────────────────────────────────────
+
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  event     String   @unique
+  name      String
+  subject   String
+  bodyHtml  String
+  bodyText  String
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

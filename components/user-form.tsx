@@ -1,7 +1,7 @@
 "use client"
 
 import { useActionState } from "react"
-import { createUserAction, updateUserAction } from "@/app/admin/benutzer/actions"
+import { createUserAction, updateUserAction } from "@/app/[locale]/admin/benutzer/actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -21,6 +21,7 @@ export function UserForm({
     name: string | null
     email: string
     isActive: boolean
+    isExternal: boolean
     departmentId: string | null
     jobRoleId: string | null
     roleId: string | null

@@ -1,7 +1,7 @@
 "use client"
 
 import { useActionState, useState } from "react"
-import { createDocumentAction } from "@/app/documents/actions"
+import { createDocumentAction } from "@/app/[locale]/documents/actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,11 +14,25 @@ export function DocumentForm({
   departments,
   jobRoles,
   users,
+  templates = [],
+  selectedTemplateId,
+  initialValues,
 }: {
   types: { id: string; name: string }[]
   departments: Dept[]
   jobRoles: { id: string; name: string }[]
   users: UserOption[]
+  templates?: { id: string; label: string }[]
+  selectedTemplateId?: string
+  initialValues?: {
+    title?: string
+    content?: string
+    typeId?: string
+    reviewIntervalMonths?: number | null
+    visibility?: string
+    sourceDocumentNumber?: string
+    sourceVersion?: string
+  } | null
 }) {
   const [state, formAction, pending] = useActionState(createDocumentAction, null)
   const [number, setNumber] = useState("")
@@ -30,60 +44,139 @@ export function DocumentForm({
   }
 
   return (
-    <form action={formAction} className="space-y-6">
-      {state?.error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">{state.error}</div>
+    <div className="space-y-6">
+      {/* Vorlagen-Auswahl (optional) */}
+      {templates.length > 0 && (
+        <div className="rounded-lg border bg-blue-50/50 p-4 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <Label htmlFor="templateSelect" className="font-semibold text-sm text-blue-900">
+                Aus Vorlage übernehmen (optional)
+              </Label>
+              <p className="text-xs text-blue-700">
+                Übernimmt Titel-Gerüst, Inhalt, Dokumenttyp, Prüfintervall und Sichtbarkeit als Startwerte.
+              </p>
+            </div>
+            {initialValues && (
+              <span className="text-xs font-medium bg-blue-100 text-blue-800 px-2.5 py-1 rounded border border-blue-200">
+                Vorlage: {initialValues.sourceDocumentNumber} (v{initialValues.sourceVersion})
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 max-w-xl">
+            <select
+              id="templateSelect"
+              defaultValue={selectedTemplateId || ""}
+              onChange={(e) => {
+                const val = e.target.value
+                window.location.href = val ? `/documents/neu?template=${val}` : `/documents/neu`
+              }}
+              className="h-9 flex-1 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">-- Keine Vorlage (leeres Dokument) --</option>
+              {templates.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <form action={formAction} className="space-y-6">
+        {selectedTemplateId && (
+          <input type="hidden" name="templateId" value={selectedTemplateId} />
+        )}
+        {state?.error && (
+          <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">{state.error}</div>
+        )}
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="space-y-2">
+            <Label htmlFor="documentNumber">Dokumentnummer</Label>
+            <Input
+              id="documentNumber"
+              name="documentNumber"
+              required
+              placeholder="z. B. SOP-002"
+              value={number}
+              onChange={(e) => setNumber(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="typeId">Typ</Label>
+            {/* Native select: zuverlässig in Server-Action-Formularen (kein JS nötig) */}
+            <select
+              id="typeId"
+              name="typeId"
+              required
+              defaultValue={initialValues?.typeId || ""}
+              key={`type-${initialValues?.typeId || "default"}`}
+              className="h-9 w-full rounded-lg border border-input bg-white px-3 text-sm"
+            >
+              <option value="" disabled>
+                Typ wählen
+              </option>
+              {types.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="title">Titel</Label>
+            <Input
+              id="title"
+              name="title"
+              required
+              placeholder="z. B. Arbeitsanweisung Reinigung"
+              defaultValue={initialValues?.title || ""}
+              key={`title-${initialValues?.title || "default"}`}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="visibility">Sichtbarkeit</Label>
+            <select
+              id="visibility"
+              name="visibility"
+              defaultValue={initialValues?.visibility || "PUBLIC"}
+              key={`vis-${initialValues?.visibility || "default"}`}
+              className="block w-full rounded-md border border-input h-10 px-3 bg-white"
+            >
+              <option value="PUBLIC">Betriebsöffentlich (PUBLIC)</option>
+              <option value="SCOPED">Geltungsbereich (SCOPED)</option>
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="reviewIntervalMonths">Prüfintervall (Monate)</Label>
+            <Input
+              id="reviewIntervalMonths"
+              name="reviewIntervalMonths"
+              type="number"
+              min="0"
+              placeholder="Optional"
+              defaultValue={initialValues?.reviewIntervalMonths ?? ""}
+              key={`interval-${initialValues?.reviewIntervalMonths ?? "default"}`}
+            />
+          </div>
+        </div>
+
         <div className="space-y-2">
-          <Label htmlFor="documentNumber">Dokumentnummer</Label>
-          <Input
-            id="documentNumber"
-            name="documentNumber"
-            required
-            placeholder="z. B. SOP-002"
-            value={number}
-            onChange={(e) => setNumber(e.target.value)}
+          <Label htmlFor="content">Inhalt</Label>
+          {/* Einfaches Textfeld bis der TipTap-Editor kommt (später geplant). */}
+          <textarea
+            id="content"
+            name="content"
+            rows={10}
+            placeholder="Dokumentinhalt…"
+            defaultValue={initialValues?.content || ""}
+            key={`content-${initialValues?.content ? "loaded" : "default"}`}
+            className="w-full rounded-lg border border-input bg-white px-3 py-2 text-sm leading-relaxed"
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="typeId">Typ</Label>
-          {/* Native select: zuverlässig in Server-Action-Formularen (kein JS nötig) */}
-          <select
-            id="typeId"
-            name="typeId"
-            required
-            defaultValue=""
-            className="h-9 w-full rounded-lg border border-input bg-white px-3 text-sm"
-          >
-            <option value="" disabled>
-              Typ wählen
-            </option>
-            {types.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="title">Titel</Label>
-          <Input id="title" name="title" required placeholder="z. B. Arbeitsanweisung Reinigung" />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="content">Inhalt</Label>
-        {/* Einfaches Textfeld bis der TipTap-Editor kommt (später geplant). */}
-        <textarea
-          id="content"
-          name="content"
-          rows={10}
-          placeholder="Dokumentinhalt…"
-          className="w-full rounded-lg border border-input bg-white px-3 py-2 text-sm leading-relaxed"
-        />
-      </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
@@ -178,5 +271,6 @@ export function DocumentForm({
         {pending ? "Wird angelegt…" : "Dokument anlegen"}
       </Button>
     </form>
+    </div>
   )
 }

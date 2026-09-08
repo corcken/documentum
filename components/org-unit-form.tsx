@@ -1,7 +1,7 @@
 "use client"
 
 import { useActionState } from "react"
-import { createOrgUnitAction, updateOrgUnitAction } from "@/app/admin/org/actions"
+import { createOrgUnitAction, updateOrgUnitAction } from "@/app/[locale]/admin/org/actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"

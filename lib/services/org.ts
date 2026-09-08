@@ -109,3 +109,21 @@ export async function deleteOrgUnit(
   })
   return { ok: true }
 }
+
+/** 
+ * Liefert die ID und alle Vorfahren-IDs der gegebenen Abteilung zurück.
+ * Nützlich, um zu prüfen, ob der Benutzer (in deptId) in einen Scope (einer der Vorfahren) fällt.
+ */
+export async function getDepartmentAncestors(id: string | null): Promise<Set<string>> {
+  const ancestors = new Set<string>()
+  let cur = id
+  while (cur) {
+    ancestors.add(cur)
+    const p = await prisma.department.findUnique({
+      where: { id: cur },
+      select: { parentId: true },
+    })
+    cur = p?.parentId ?? null
+  }
+  return ancestors
+}

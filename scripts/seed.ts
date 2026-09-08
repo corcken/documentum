@@ -188,6 +188,23 @@ Sicherstellung, dass nur freigegebene und aktuelle Dokumente verwendet werden.`
   } else {
     console.log('Demo document SOP-001 already exists — skipped')
   }
+
+  // ── E-Mail-Vorlagen (Runde 8) ─────────────────────────────────────────────
+  const { DEFAULT_TEMPLATES } = await import('../lib/email-defaults')
+  for (const [event, def] of Object.entries(DEFAULT_TEMPLATES)) {
+    await prisma.emailTemplate.upsert({
+      where: { event },
+      update: {},
+      create: {
+        event: def.event,
+        name: def.name,
+        subject: def.subject,
+        bodyHtml: def.bodyHtml,
+        bodyText: def.bodyText,
+      },
+    })
+  }
+  console.log('Email templates seeded.')
 }
 
 main()

@@ -33,6 +33,7 @@ export type ListOptions = {
 export async function getLatestVersion(documentId: string) {
   return prisma.documentVersion.findFirst({
     where: { documentId },
+    include: { document: true },
     orderBy: [{ majorVersion: "desc" }, { minorVersion: "desc" }],
   })
 }
@@ -41,7 +42,7 @@ export async function getLatestVersion(documentId: string) {
  * Liste aller Dokumente. Für Leser (includeDrafts=false) werden nur Dokumente
  * mit freigegebenem Stand geliefert; Entwürfe bleiben unsichtbar.
  */
-export async function listDocuments(filters: DocumentFilters = {}, opts: ListOptions) {
+export async function listDocuments(userId: string, filters: DocumentFilters = {}, opts: ListOptions) {
   const docs = await prisma.document.findMany({
     where: {
       ...(filters.typeId ? { typeId: filters.typeId } : {}),
@@ -55,7 +56,7 @@ export async function listDocuments(filters: DocumentFilters = {}, opts: ListOpt
     orderBy: { createdAt: "desc" },
   })
 
-  return docs
+    const filtered = docs
     .map((d) => {
       const currentVersion = opts.includeDrafts
         ? (d.versions.find((v) => v.status === "Released") ?? d.versions[0] ?? null)
@@ -63,15 +64,26 @@ export async function listDocuments(filters: DocumentFilters = {}, opts: ListOpt
       return { ...d, currentVersion }
     })
     .filter((d) => {
+      if (!d.currentVersion) return false
       if (filters.search) {
         const q = filters.search.toLowerCase()
         const hitNumber = d.documentNumber.toLowerCase().includes(q)
-        const hitTitle = d.currentVersion?.title.toLowerCase().includes(q)
+        const hitTitle = d.currentVersion.title.toLowerCase().includes(q)
         if (!hitNumber && !hitTitle) return false
       }
-      if (filters.status && d.currentVersion?.status !== filters.status) return false
+      if (filters.status && d.currentVersion.status !== filters.status) return false
       return true
     })
+
+  const { canReadVersion } = await import("./document-helpers")
+  const results = await Promise.all(
+    filtered.map(async (d) => {
+      const canRead = await canReadVersion(userId, d.currentVersion!.id)
+      return { doc: d, canRead }
+    })
+  )
+  
+  return results.filter(r => r.canRead).map(r => r.doc)
 }
 
 export async function getDocument(id: string) {
@@ -91,6 +103,11 @@ export async function getDocument(id: string) {
           },
           scopeDepartments: { include: { department: true } },
           scopeJobRoles: { include: { jobRole: true } },
+          fileAssetUses: {
+            where: { role: "attachment" },
+            include: { fileAsset: true },
+            orderBy: { createdAt: "asc" },
+          },
         },
         orderBy: [{ majorVersion: "desc" }, { minorVersion: "desc" }],
       },
@@ -121,13 +138,15 @@ export type CreateDocumentInput = {
   jobRoleIds: string[]
   reviewerId: string
   approverId: string
+  visibility?: string
+  reviewIntervalMonths?: number
 }
 
 /** Legt ein Dokument mit erster Version 0.0 (Draft) + Geltungsbereich an. */
 export async function createDocument(input: CreateDocumentInput) {
   const {
     documentNumber, title, typeId, content, ownerId,
-    departmentIds, jobRoleIds, reviewerId, approverId,
+    departmentIds, jobRoleIds, reviewerId, approverId, reviewIntervalMonths,
   } = input
 
   assertAssignment(ownerId, reviewerId, approverId)
@@ -136,6 +155,7 @@ export async function createDocument(input: CreateDocumentInput) {
     data: {
       documentNumber,
       typeId,
+      reviewIntervalMonths,
       ownerId,
       versions: {
         create: {
@@ -144,6 +164,7 @@ export async function createDocument(input: CreateDocumentInput) {
           title,
           content: content || null,
           status: "Draft",
+          visibility: input.visibility || "PUBLIC",
           createdById: ownerId,
           reviewerId,
           approverId,
@@ -160,7 +181,7 @@ export async function createDocument(input: CreateDocumentInput) {
     action: "CREATE",
     entityType: "Document",
     entityId: doc.id,
-    after: { documentNumber, title, typeId, version: "0.0", status: "Draft", reviewerId, approverId },
+    after: { documentNumber, title, typeId, reviewIntervalMonths, version: "0.0", status: "Draft", reviewerId, approverId },
   })
 
   return doc
@@ -174,12 +195,16 @@ export async function saveDraftVersion(input: {
   documentId: string
   title: string
   content: string
+  changeReason: string
   userId: string
   reviewerId: string
   approverId: string
+  visibility?: string
+  reviewIntervalMonths?: number
 }) {
   const latest = await getLatestVersion(input.documentId)
   if (!latest) throw new Error("Dokument hat keine Version.")
+  if (!input.changeReason?.trim()) throw new Error("Änderungsgrund ist Pflicht.")
 
   if (latest.status === "In_Review" || latest.status === "In_Approval") {
     throw new Error("Das Dokument ist im Freeze (zur Prüfung eingereicht) — Änderungen sind nicht möglich.")
@@ -198,7 +223,9 @@ export async function saveDraftVersion(input: {
       minorVersion: latest.minorVersion + 1,
       title: input.title,
       content: input.content,
+      changeReason: input.changeReason,
       status: "Draft",
+      visibility: latest.visibility,
       createdById: input.userId,
       reviewerId: input.reviewerId,
       approverId: input.approverId,
@@ -237,6 +264,7 @@ export async function restoreVersion(input: {
       title: source.title,
       content: source.content,
       status: "Draft",
+      visibility: latest.visibility,
       createdById: input.userId,
       reviewerId: latest.reviewerId,
       approverId: latest.approverId,
@@ -268,177 +296,3 @@ function closePendingTasks(versionId: string, status: "Approved" | "Rejected", c
  * Einreichung zur Prüfung → Freeze (In_Review) + Review-Task für den Prüfer.
  * Nur der Ersteller der aktuellen Version darf einreichen.
  */
-export async function submitForReview(input: { documentId: string; userId: string }) {
-  const latest = await getLatestVersion(input.documentId)
-  if (!latest || latest.status !== "Draft") {
-    throw new Error("Kein Entwurf zum Einreichen vorhanden.")
-  }
-  if (latest.createdById !== input.userId) {
-    throw new Error("Nur der Ersteller kann das Dokument zur Prüfung einreichen.")
-  }
-  if (!latest.reviewerId || !latest.approverId) {
-    throw new Error("Prüfer und Genehmiger müssen zugewiesen sein.")
-  }
-
-  const v = await prisma.$transaction([
-    prisma.documentVersion.update({ where: { id: latest.id }, data: { status: "In_Review" } }),
-    prisma.workflowTask.create({
-      data: {
-        documentVersionId: latest.id,
-        assignedToId: latest.reviewerId,
-        taskType: "Review",
-        status: "Pending",
-      },
-    }),
-  ])
-  await logAudit({
-    userId: input.userId,
-    action: "SUBMIT_FOR_REVIEW",
-    entityType: "DocumentVersion",
-    entityId: v[0].id,
-    after: { major: v[0].majorVersion, minor: v[0].minorVersion, reviewerId: latest.reviewerId },
-  })
-  return v[0]
-}
-
-/**
- * Prüfung bestanden → In_Approval + Approval-Task für den Genehmiger.
- * Nur der zugewiesene Prüfer darf bestätigen.
- */
-export async function approveReview(input: { versionId: string; userId: string }) {
-  const v = await prisma.documentVersion.findUnique({ where: { id: input.versionId } })
-  if (!v || v.status !== "In_Review") {
-    throw new Error("Version ist nicht in Prüfung.")
-  }
-  if (v.reviewerId !== input.userId) {
-    throw new Error("Nur der zugewiesene Prüfer kann die Prüfung bestätigen.")
-  }
-
-  const [updated] = await prisma.$transaction([
-    prisma.documentVersion.update({ where: { id: v.id }, data: { status: "In_Approval" } }),
-    prisma.workflowTask.updateMany({
-      where: { documentVersionId: v.id, taskType: "Review", status: "Pending" },
-      data: { status: "Approved", completedAt: new Date() },
-    }),
-    prisma.workflowTask.create({
-      data: {
-        documentVersionId: v.id,
-        assignedToId: v.approverId,
-        taskType: "Approval",
-        status: "Pending",
-      },
-    }),
-  ])
-  await logAudit({
-    userId: input.userId,
-    action: "APPROVE_REVIEW",
-    entityType: "DocumentVersion",
-    entityId: v.id,
-    after: { major: v.majorVersion, minor: v.minorVersion, approverId: v.approverId },
-  })
-  return updated
-}
-
-/**
- * Zurück an den Ersteller mit Kommentar → Draft (Minor-Zählung läuft weiter).
- * Der aktuell zuständige Prüfer (In_Review) oder Genehmiger (In_Approval) darf zurückgeben.
- */
-export async function returnToAuthor(input: { versionId: string; comment: string; userId: string }) {
-  if (!input.comment.trim()) {
-    throw new Error("Ein Kommentar ist Pflicht (Änderungsgrund).")
-  }
-  const v = await prisma.documentVersion.findUnique({ where: { id: input.versionId } })
-  if (!v || (v.status !== "In_Review" && v.status !== "In_Approval")) {
-    throw new Error("Version ist nicht in Prüfung/Freigabe.")
-  }
-  const responsible = v.status === "In_Review" ? v.reviewerId : v.approverId
-  if (responsible !== input.userId) {
-    throw new Error("Nur der aktuell zuständige Prüfer/Genehmiger kann zurückgeben.")
-  }
-
-  const updated = await prisma.$transaction([
-    prisma.documentVersion.update({ where: { id: v.id }, data: { status: "Draft" } }),
-    closePendingTasks(v.id, "Rejected", input.comment),
-  ])
-  await logAudit({
-    userId: input.userId,
-    action: "RETURN_TO_AUTHOR",
-    entityType: "DocumentVersion",
-    entityId: v.id,
-    after: { major: v.majorVersion, minor: v.minorVersion, comment: input.comment },
-  })
-  return updated[0]
-}
-
-/**
- * Genehmigung: Major +1, Minor 0, Status Released.
- * Alle anderen freigegebenen Versionen → Archived (mit Ersetzungsdatum).
- * Nur der zugewiesene Genehmiger darf freigeben.
- */
-export async function approveVersion(input: { versionId: string; userId: string }) {
-  const v = await prisma.documentVersion.findUnique({ where: { id: input.versionId } })
-  if (!v || v.status !== "In_Approval") {
-    throw new Error("Version ist nicht in Freigabe.")
-  }
-  if (v.approverId !== input.userId) {
-    throw new Error("Nur der zugewiesene Genehmiger kann freigeben.")
-  }
-
-  const maxMajor = await prisma.documentVersion.aggregate({
-    where: { documentId: v.documentId },
-    _max: { majorVersion: true },
-  })
-  const newMajor = (maxMajor._max.majorVersion ?? 0) + 1
-
-  const [, , updated] = await prisma.$transaction([
-    prisma.documentVersion.updateMany({
-      where: { documentId: v.documentId, status: "Released" },
-      data: { status: "Archived", obsoleteDate: new Date() },
-    }),
-    prisma.workflowTask.updateMany({
-      where: { documentVersionId: v.id, taskType: "Approval", status: "Pending" },
-      data: { status: "Approved", completedAt: new Date() },
-    }),
-    prisma.documentVersion.update({
-      where: { id: v.id },
-      data: { majorVersion: newMajor, minorVersion: 0, status: "Released", effectiveDate: new Date() },
-    }),
-  ])
-
-  await logAudit({
-    userId: input.userId,
-    action: "APPROVE",
-    entityType: "DocumentVersion",
-    entityId: v.id,
-    before: { major: v.majorVersion, minor: v.minorVersion, status: v.status },
-    after: { major: newMajor, minor: 0, status: "Released" },
-  })
-  return updated
-}
-
-/**
- * Offene Aufgaben (Review/Approval) eines Users — für die Aufgaben-Inbox.
- */
-export async function listMyTasks(userId: string) {
-  return prisma.workflowTask.findMany({
-    where: { assignedToId: userId, status: "Pending" },
-    include: {
-      documentVersion: {
-        include: {
-          document: { select: { id: true, documentNumber: true } },
-          reviewer: { select: { id: true, name: true, email: true } },
-          approver: { select: { id: true, name: true, email: true } },
-          createdBy: { select: { id: true, name: true, email: true } },
-        },
-      },
-    },
-    orderBy: { createdAt: "asc" },
-  })
-}
-
-/** Anzahl offener Aufgaben eines Users (für Header/Dashboard). */
-export async function countMyOpenTasks(userId: string) {
-  return prisma.workflowTask.count({
-    where: { assignedToId: userId, status: "Pending" },
-  })
-}

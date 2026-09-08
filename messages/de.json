@@ -1,0 +1,61 @@
+{
+  "Index": {
+    "title": "Dokumentum"
+  },
+  "AppHeader": {
+    "title": "Documentum",
+    "dashboard": "Dashboard",
+    "documents": "Dokumente",
+    "tasks": "Aufgaben",
+    "organisation": "Organisation",
+    "jobroles": "Job-Rollen",
+    "doctypes": "Dokumenttypen",
+    "users": "Benutzer",
+    "audit": "Audit-Log",
+    "stats": "Auswertungen",
+    "mediathek": "Mediathek",
+    "logout": "Abmelden",
+    "userMenuAria": "Benutzermenü öffnen"
+  },
+  "UserMenu": {
+    "title": "Benutzerkonto",
+    "description": "Angemeldet als",
+    "settings": "Einstellungen",
+    "settingsDesc": "Profil, Passwort und Darstellung anpassen",
+    "logout": "Abmelden",
+    "close": "Schließen"
+  },
+  "Theme": {
+    "title": "Darstellung",
+    "hell": "Hell",
+    "dunkel": "Dunkel",
+    "kontrast": "Starker Kontrast",
+    "sap90": "SAP-Klassik (90er)",
+    "kompakt": "Kompakt",
+    "gruen": "Entspannt Grün",
+    "herbst": "Herbstnebel",
+    "tiefsee": "Tiefsee",
+    "marine": "Marine & Elfenbein"
+  },
+  "Org": {
+    "title": "Organisation",
+    "subtitle": "Einheiten können beliebig tief verschachtelt werden — es gibt keine feste Ebenen-Bedeutung (z. B. „Ebene 1 = Abteilung, Ebene 2 = Team“).",
+    "newUnit": "Neue Organisationseinheit",
+    "viewList": "Liste",
+    "viewGraph": "Diagramm",
+    "expandAll": "Alle aufklappen",
+    "collapseAll": "Alle zuklappen",
+    "expand": "Aufklappen",
+    "collapse": "Zuklappen",
+    "addSubunit": "+ Untereinheit",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "directSubunits": "Direkte Untereinheiten",
+    "empty": "Noch keine Organisationseinheiten angelegt.",
+    "deleteConfirm": "wirklich endgültig löschen? Nur möglich, wenn keine Untereinheiten, Benutzer oder Geltungsbereiche daran hängen.",
+    "deleteConfirmButton": "Endgültig löschen",
+    "cancel": "Abbrechen",
+    "unitsCount": "{count} Einheiten",
+    "unitCount": "1 Einheit"
+  }
+}

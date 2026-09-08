@@ -1,7 +1,7 @@
 "use client"
 
 import { useActionState } from "react"
-import { saveDraftAction } from "@/app/documents/actions"
+import { saveDraftAction } from "@/app/[locale]/documents/actions"
 import { contentToText } from "@/lib/content"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -45,6 +45,17 @@ export function DocumentEditForm({
           rows={10}
           defaultValue={contentToText(initialContent)}
           className="w-full rounded-lg border border-input bg-white px-3 py-2 text-sm leading-relaxed"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="changeReason">Änderungsgrund (QM-Pflicht)</Label>
+        <textarea
+          id="changeReason"
+          name="changeReason"
+          rows={2}
+          required
+          placeholder="Was wurde geändert und warum?"
+          className="w-full rounded-lg border border-input bg-white px-3 py-2 text-sm"
         />
       </div>
       <div className="grid gap-4 md:grid-cols-2">

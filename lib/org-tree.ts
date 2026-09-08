@@ -10,6 +10,7 @@ export type OrgUnitFlat = {
   name: string
   parentId: string | null
   abbreviation: string | null
+  description?: string | null
 }
 
 export type OrgUnitNode = OrgUnitFlat & { children: OrgUnitNode[] }
@@ -39,3 +40,58 @@ export function flattenOrgUnits(units: OrgUnitFlat[]): { id: string; name: strin
   walk(null, 0)
   return out
 }
+
+/** Zählt alle Nachfahren eines Knotens rekursiv. */
+export function countAllDescendants(node: OrgUnitNode): number {
+  let count = node.children.length
+  for (const child of node.children) {
+    count += countAllDescendants(child)
+  }
+  return count
+}
+
+/** Ermittelt alle IDs von Knoten, die mindestens ein Kind haben. */
+export function getAllNodeIdsWithChildren(tree: OrgUnitNode[]): string[] {
+  const ids: string[] = []
+  function walk(nodes: OrgUnitNode[]) {
+    for (const n of nodes) {
+      if (n.children.length > 0) {
+        ids.push(n.id)
+        walk(n.children)
+      }
+    }
+  }
+  walk(tree)
+  return ids
+}
+
+/** Ermittelt alle IDs im gesamten Baum. */
+export function getAllNodeIds(tree: OrgUnitNode[]): string[] {
+  const ids: string[] = []
+  function walk(nodes: OrgUnitNode[]) {
+    for (const n of nodes) {
+      ids.push(n.id)
+      if (n.children.length > 0) {
+        walk(n.children)
+      }
+    }
+  }
+  walk(tree)
+  return ids
+}
+
+/** Zählt alle Knoten im gesamten Baum. */
+export function countTotalNodes(tree: OrgUnitNode[]): number {
+  let count = 0
+  function walk(nodes: OrgUnitNode[]) {
+    count += nodes.length
+    for (const n of nodes) {
+      if (n.children.length > 0) {
+        walk(n.children)
+      }
+    }
+  }
+  walk(tree)
+  return count
+}
+
