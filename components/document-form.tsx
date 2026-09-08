@@ -12,6 +12,7 @@ type UserOption = { id: string; name: string | null; email: string }
 export function DocumentForm({
   types,
   departments,
+  creatorDepartments,
   jobRoles,
   users,
   templates = [],
@@ -20,6 +21,7 @@ export function DocumentForm({
 }: {
   types: { id: string; name: string }[]
   departments: Dept[]
+  creatorDepartments?: { id: string; name: string }[]
   jobRoles: { id: string; name: string }[]
   users: UserOption[]
   templates?: { id: string; label: string }[]
@@ -162,6 +164,25 @@ export function DocumentForm({
               key={`interval-${initialValues?.reviewIntervalMonths ?? "default"}`}
             />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="responsibleDepartmentId">Verantwortlicher Bereich</Label>
+            <select
+              id="responsibleDepartmentId"
+              name="responsibleDepartmentId"
+              required
+              defaultValue=""
+              className="h-9 w-full rounded-lg border border-input bg-white px-3 text-sm"
+            >
+              <option value="" disabled>
+                Bereich wählen
+              </option>
+              {(creatorDepartments && creatorDepartments.length > 0 ? creatorDepartments : departments).map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -178,49 +199,8 @@ export function DocumentForm({
           />
         </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="reviewerId">Prüfer (Review)</Label>
-          <select
-            id="reviewerId"
-            name="reviewerId"
-            required
-            defaultValue=""
-            className="h-9 w-full rounded-lg border border-input bg-white px-3 text-sm"
-          >
-            <option value="" disabled>
-              Prüfer wählen
-            </option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name ?? u.email}
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-gray-500">Prüft den Entwurf und gibt ihn frei zur Freigabe.</p>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="approverId">Genehmiger (Freigabe)</Label>
-          <select
-            id="approverId"
-            name="approverId"
-            required
-            defaultValue=""
-            className="h-9 w-full rounded-lg border border-input bg-white px-3 text-sm"
-          >
-            <option value="" disabled>
-              Genehmiger wählen
-            </option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name ?? u.email}
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-gray-500">
-            Gibt die geprüfte Version frei (nicht der Ersteller selbst, Vier-Augen-Prinzip).
-          </p>
-        </div>
+      <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 text-xs text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-200">
+        ℹ️ Prüfer und Genehmiger werden beim Einreichen zur Prüfung automatisch anhand der für den verantwortlichen Bereich hinterlegten Rollen zugewiesen.
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -234,7 +214,7 @@ export function DocumentForm({
               <label key={d.id} className="flex cursor-pointer items-center gap-2 text-sm">
                 <input
                   type="checkbox"
-                  name="departmentId"
+                  name="scopeDepartmentId"
                   value={d.id}
                   checked={deptIds.includes(d.id)}
                   onChange={() => toggle(deptIds, setDeptIds, d.id)}

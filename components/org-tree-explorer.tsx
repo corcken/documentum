@@ -13,6 +13,7 @@ export interface OrgTreeExplorerProps {
   expandedIds: Set<string>
   onToggle: (id: string) => void
   showAdminActions?: boolean
+  manageableDepartmentIds?: string[]
 }
 
 export function OrgTreeExplorer({
@@ -20,6 +21,7 @@ export function OrgTreeExplorer({
   expandedIds,
   onToggle,
   showAdminActions = true,
+  manageableDepartmentIds,
 }: OrgTreeExplorerProps) {
   const t = useTranslations("Org")
 
@@ -42,6 +44,7 @@ export function OrgTreeExplorer({
           expandedIds={expandedIds}
           onToggle={onToggle}
           showAdminActions={showAdminActions}
+          manageableDepartmentIds={manageableDepartmentIds}
         />
       ))}
     </ul>
@@ -55,6 +58,7 @@ interface OrgTreeNodeItemProps {
   expandedIds: Set<string>
   onToggle: (id: string) => void
   showAdminActions: boolean
+  manageableDepartmentIds?: string[]
 }
 
 function OrgTreeNodeItem({
@@ -64,6 +68,7 @@ function OrgTreeNodeItem({
   expandedIds,
   onToggle,
   showAdminActions,
+  manageableDepartmentIds,
 }: OrgTreeNodeItemProps) {
   const t = useTranslations("Org")
   const hasChildren = node.children.length > 0
@@ -185,35 +190,52 @@ function OrgTreeNodeItem({
           </div>
         </div>
 
-        {/* Rechte Seite: Aktions-Links (Untereinheit / Bearbeiten / Löschen) */}
-        {showAdminActions && (
-          <div
-            className="flex shrink-0 items-center gap-1 sm:ml-auto pt-1 sm:pt-0 border-t sm:border-t-0 border-border/40"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Link
-              href={`?action=new&parent=${node.id}`}
-              className={buttonVariants({ variant: "ghost", size: "sm" })}
+        {/* Rechte Seite: Aktions-Links (Rollen & Leiter / Untereinheit / Bearbeiten / Löschen) */}
+        {(() => {
+          const canManageRoles = showAdminActions || (manageableDepartmentIds && manageableDepartmentIds.includes(node.id))
+          if (!showAdminActions && !canManageRoles) return null
+
+          return (
+            <div
+              className="flex shrink-0 items-center gap-1 sm:ml-auto pt-1 sm:pt-0 border-t sm:border-t-0 border-border/40"
+              onClick={(e) => e.stopPropagation()}
             >
-              {t("addSubunit")}
-            </Link>
-            <Link
-              href={`?action=edit&id=${node.id}`}
-              className={buttonVariants({ variant: "ghost", size: "sm" })}
-            >
-              {t("edit")}
-            </Link>
-            <Link
-              href={`?action=delete&id=${node.id}`}
-              className={cn(
-                buttonVariants({ variant: "ghost", size: "sm" }),
-                "text-destructive hover:text-destructive"
+              {canManageRoles && (
+                <Link
+                  href={`?action=roles&id=${node.id}`}
+                  className={buttonVariants({ variant: "ghost", size: "sm" })}
+                >
+                  {t("rolesAndLeads")}
+                </Link>
               )}
-            >
-              {t("delete")}
-            </Link>
-          </div>
-        )}
+              {showAdminActions && (
+                <>
+                  <Link
+                    href={`?action=new&parent=${node.id}`}
+                    className={buttonVariants({ variant: "ghost", size: "sm" })}
+                  >
+                    {t("addSubunit")}
+                  </Link>
+                  <Link
+                    href={`?action=edit&id=${node.id}`}
+                    className={buttonVariants({ variant: "ghost", size: "sm" })}
+                  >
+                    {t("edit")}
+                  </Link>
+                  <Link
+                    href={`?action=delete&id=${node.id}`}
+                    className={cn(
+                      buttonVariants({ variant: "ghost", size: "sm" }),
+                      "text-destructive hover:text-destructive"
+                    )}
+                  >
+                    {t("delete")}
+                  </Link>
+                </>
+              )}
+            </div>
+          )
+        })()}
       </div>
 
       {/* Untereinheiten */}
@@ -228,6 +250,7 @@ function OrgTreeNodeItem({
               expandedIds={expandedIds}
               onToggle={onToggle}
               showAdminActions={showAdminActions}
+              manageableDepartmentIds={manageableDepartmentIds}
             />
           ))}
         </ul>

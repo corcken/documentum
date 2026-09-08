@@ -91,6 +91,7 @@ export async function getDocument(id: string) {
     where: { id },
     include: {
       type: true,
+      department: true,
       owner: { select: { id: true, name: true, email: true } },
       versions: {
         include: {
@@ -134,10 +135,11 @@ export type CreateDocumentInput = {
   typeId: string
   content: string
   ownerId: string
+  departmentId?: string | null
   departmentIds: string[]
   jobRoleIds: string[]
-  reviewerId: string
-  approverId: string
+  reviewerId?: string | null
+  approverId?: string | null
   visibility?: string
   reviewIntervalMonths?: number
 }
@@ -145,16 +147,39 @@ export type CreateDocumentInput = {
 /** Legt ein Dokument mit erster Version 0.0 (Draft) + Geltungsbereich an. */
 export async function createDocument(input: CreateDocumentInput) {
   const {
-    documentNumber, title, typeId, content, ownerId,
+    documentNumber, title, typeId, content, ownerId, departmentId,
     departmentIds, jobRoleIds, reviewerId, approverId, reviewIntervalMonths,
   } = input
 
-  assertAssignment(ownerId, reviewerId, approverId)
+  if (departmentId) {
+    const user = await prisma.user.findUnique({
+      where: { id: ownerId },
+      include: { role: true },
+    })
+    const isAdmin = user?.role?.name === "ADMIN"
+    if (!isAdmin) {
+      const hasRole = await prisma.departmentRoleAssignment.findFirst({
+        where: {
+          departmentId,
+          userId: ownerId,
+          role: "ERSTELLER",
+        },
+      })
+      if (!hasRole) {
+        throw new Error("Sie besitzen keine Ersteller-Rolle für diesen verantwortlichen Bereich.")
+      }
+    }
+  }
+
+  if (reviewerId && approverId) {
+    assertAssignment(ownerId, reviewerId, approverId)
+  }
 
   const doc = await prisma.document.create({
     data: {
       documentNumber,
       typeId,
+      departmentId: departmentId ?? null,
       reviewIntervalMonths,
       ownerId,
       versions: {
@@ -166,8 +191,8 @@ export async function createDocument(input: CreateDocumentInput) {
           status: "Draft",
           visibility: input.visibility || "PUBLIC",
           createdById: ownerId,
-          reviewerId,
-          approverId,
+          reviewerId: reviewerId ?? null,
+          approverId: approverId ?? null,
           scopeDepartments: { create: departmentIds.map((id) => ({ departmentId: id })) },
           scopeJobRoles: { create: jobRoleIds.map((id) => ({ jobRoleId: id })) },
         },
@@ -181,7 +206,7 @@ export async function createDocument(input: CreateDocumentInput) {
     action: "CREATE",
     entityType: "Document",
     entityId: doc.id,
-    after: { documentNumber, title, typeId, reviewIntervalMonths, version: "0.0", status: "Draft", reviewerId, approverId },
+    after: { documentNumber, title, typeId, departmentId, reviewIntervalMonths, version: "0.0", status: "Draft", reviewerId, approverId },
   })
 
   return doc
@@ -197,8 +222,8 @@ export async function saveDraftVersion(input: {
   content: string
   changeReason: string
   userId: string
-  reviewerId: string
-  approverId: string
+  reviewerId?: string | null
+  approverId?: string | null
   visibility?: string
   reviewIntervalMonths?: number
 }) {
@@ -212,8 +237,36 @@ export async function saveDraftVersion(input: {
   if ((latest.content ?? "") === (input.content ?? "")) {
     throw new Error("Keine Änderung erkannt — es wurde keine neue Version erzeugt.")
   }
-  const owner = await prisma.document.findUnique({ where: { id: input.documentId }, select: { ownerId: true } })
-  assertAssignment(owner?.ownerId ?? input.userId, input.reviewerId, input.approverId)
+  const doc = await prisma.document.findUnique({
+    where: { id: input.documentId },
+    select: { ownerId: true, departmentId: true },
+  })
+
+  if (doc?.departmentId) {
+    const user = await prisma.user.findUnique({
+      where: { id: input.userId },
+      include: { role: true },
+    })
+    const isAdmin = user?.role?.name === "ADMIN"
+    if (!isAdmin && doc.ownerId !== input.userId) {
+      const hasRole = await prisma.departmentRoleAssignment.findFirst({
+        where: {
+          departmentId: doc.departmentId,
+          userId: input.userId,
+          role: "ERSTELLER",
+        },
+      })
+      if (!hasRole) {
+        throw new Error("Sie besitzen keine Ersteller-Rolle für diesen verantwortlichen Bereich.")
+      }
+    }
+  }
+
+  const effReviewerId = input.reviewerId ?? latest.reviewerId
+  const effApproverId = input.approverId ?? latest.approverId
+  if (effReviewerId && effApproverId) {
+    assertAssignment(doc?.ownerId ?? input.userId, effReviewerId, effApproverId)
+  }
 
   // Draft → weiterzählen; Released → neue Bearbeitungsrunde (1.0 → 1.1)
   const v = await prisma.documentVersion.create({
@@ -227,8 +280,8 @@ export async function saveDraftVersion(input: {
       status: "Draft",
       visibility: latest.visibility,
       createdById: input.userId,
-      reviewerId: input.reviewerId,
-      approverId: input.approverId,
+      reviewerId: effReviewerId ?? null,
+      approverId: effApproverId ?? null,
     },
   })
   await logAudit({
@@ -236,7 +289,7 @@ export async function saveDraftVersion(input: {
     action: "SAVE_DRAFT",
     entityType: "DocumentVersion",
     entityId: v.id,
-    after: { major: v.majorVersion, minor: v.minorVersion, reviewerId: input.reviewerId, approverId: input.approverId },
+    after: { major: v.majorVersion, minor: v.minorVersion, reviewerId: effReviewerId, approverId: effApproverId },
   })
   return v
 }

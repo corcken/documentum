@@ -4,7 +4,15 @@ import { z } from "zod"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createOrgUnit, deleteOrgUnit, updateOrgUnit } from "@/lib/services/org"
-import { requireAdminId } from "@/lib/auth-guard"
+import { requireAdminId, requireUserId } from "@/lib/auth-guard"
+import {
+  addDepartmentLead,
+  removeDepartmentLead,
+  addDepartmentRole,
+  removeDepartmentRole,
+  replaceDepartmentRole,
+  setDepartmentQuorum,
+} from "@/lib/services/department-roles"
 
 const ROOT = "__root__"
 
@@ -73,3 +81,93 @@ export async function deleteOrgUnitAction(formData: FormData) {
   revalidatePath("/admin/org")
   redirect("/admin/org")
 }
+
+export async function addDepartmentLeadAction(formData: FormData) {
+  const actorId = await requireUserId()
+  const departmentId = String(formData.get("departmentId") ?? "")
+  const userId = String(formData.get("userId") ?? "")
+  if (!departmentId || !userId) return
+  try {
+    await addDepartmentLead(actorId, departmentId, userId)
+  } catch (e) {
+    redirect(`/admin/org?action=roles&id=${departmentId}&error=${encodeURIComponent(e instanceof Error ? e.message : "Fehler")}`)
+  }
+  revalidatePath("/admin/org")
+  redirect(`/admin/org?action=roles&id=${departmentId}`)
+}
+
+export async function removeDepartmentLeadAction(formData: FormData) {
+  const actorId = await requireUserId()
+  const departmentId = String(formData.get("departmentId") ?? "")
+  const userId = String(formData.get("userId") ?? "")
+  if (!departmentId || !userId) return
+  try {
+    await removeDepartmentLead(actorId, departmentId, userId)
+  } catch (e) {
+    redirect(`/admin/org?action=roles&id=${departmentId}&error=${encodeURIComponent(e instanceof Error ? e.message : "Fehler")}`)
+  }
+  revalidatePath("/admin/org")
+  redirect(`/admin/org?action=roles&id=${departmentId}`)
+}
+
+export async function addDepartmentRoleAction(formData: FormData) {
+  const actorId = await requireUserId()
+  const departmentId = String(formData.get("departmentId") ?? "")
+  const userId = String(formData.get("userId") ?? "")
+  const role = String(formData.get("role") ?? "")
+  if (!departmentId || !userId || !role) return
+  try {
+    await addDepartmentRole(actorId, departmentId, userId, role)
+  } catch (e) {
+    redirect(`/admin/org?action=roles&id=${departmentId}&error=${encodeURIComponent(e instanceof Error ? e.message : "Fehler")}`)
+  }
+  revalidatePath("/admin/org")
+  redirect(`/admin/org?action=roles&id=${departmentId}`)
+}
+
+export async function removeDepartmentRoleAction(formData: FormData) {
+  const actorId = await requireUserId()
+  const departmentId = String(formData.get("departmentId") ?? "")
+  const userId = String(formData.get("userId") ?? "")
+  const role = String(formData.get("role") ?? "")
+  if (!departmentId || !userId || !role) return
+  try {
+    await removeDepartmentRole(actorId, departmentId, userId, role)
+  } catch (e) {
+    redirect(`/admin/org?action=roles&id=${departmentId}&error=${encodeURIComponent(e instanceof Error ? e.message : "Fehler")}`)
+  }
+  revalidatePath("/admin/org")
+  redirect(`/admin/org?action=roles&id=${departmentId}`)
+}
+
+export async function replaceDepartmentRoleAction(formData: FormData) {
+  const actorId = await requireUserId()
+  const departmentId = String(formData.get("departmentId") ?? "")
+  const oldUserId = String(formData.get("oldUserId") ?? "")
+  const newUserId = String(formData.get("newUserId") ?? "")
+  const role = String(formData.get("role") ?? "")
+  if (!departmentId || !oldUserId || !newUserId || !role) return
+  try {
+    await replaceDepartmentRole(actorId, departmentId, oldUserId, newUserId, role)
+  } catch (e) {
+    redirect(`/admin/org?action=roles&id=${departmentId}&error=${encodeURIComponent(e instanceof Error ? e.message : "Fehler")}`)
+  }
+  revalidatePath("/admin/org")
+  redirect(`/admin/org?action=roles&id=${departmentId}`)
+}
+
+export async function setDepartmentQuorumAction(formData: FormData) {
+  const actorId = await requireUserId()
+  const departmentId = String(formData.get("departmentId") ?? "")
+  const rawQuorum = String(formData.get("quorumMode") ?? "")
+  const quorumMode = rawQuorum === "einer" || rawQuorum === "alle" ? rawQuorum : null
+  if (!departmentId) return
+  try {
+    await setDepartmentQuorum(actorId, departmentId, quorumMode)
+  } catch (e) {
+    redirect(`/admin/org?action=roles&id=${departmentId}&error=${encodeURIComponent(e instanceof Error ? e.message : "Fehler")}`)
+  }
+  revalidatePath("/admin/org")
+  redirect(`/admin/org?action=roles&id=${departmentId}`)
+}
+

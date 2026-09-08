@@ -1,5 +1,6 @@
 import { auth } from "@/auth"
 import Link from "next/link"
+import { prisma } from "@/lib/prisma"
 import { countMyOpenTasks } from "@/lib/services/tasks"
 import { getUserAvatar } from "@/lib/services/avatar"
 import { UserMenuDialog } from "@/components/user-menu-dialog"
@@ -7,6 +8,8 @@ import { UserMenuDialog } from "@/components/user-menu-dialog"
 export async function AppHeader() {
   const session = await auth()
   const isAdmin = session?.user?.role === "ADMIN"
+  const isLead = session?.user?.id ? (await prisma.departmentLead.findFirst({ where: { userId: session.user.id } })) !== null : false
+  const canManageOrg = isAdmin || isLead
   const openTasks = session?.user?.id ? await countMyOpenTasks(session.user.id) : 0
   const avatar = session?.user?.id ? await getUserAvatar(session.user.id) : null
 
@@ -37,11 +40,13 @@ export async function AppHeader() {
           <Link href="/mediathek" className="text-sm text-gray-600 hover:text-gray-900">
             Mediathek
           </Link>
+          {canManageOrg && (
+            <Link href="/admin/org" className="text-sm text-gray-600 hover:text-gray-900">
+              Organisation
+            </Link>
+          )}
           {isAdmin && (
             <>
-              <Link href="/admin/org" className="text-sm text-gray-600 hover:text-gray-900">
-                Organisation
-              </Link>
               <Link href="/admin/benutzer" className="text-sm text-gray-600 hover:text-gray-900">
                 Benutzer
               </Link>
@@ -50,6 +55,9 @@ export async function AppHeader() {
               </Link>
               <Link href="/admin/email" className="text-sm text-gray-600 hover:text-gray-900">
                 E-Mail & Vorlagen
+              </Link>
+              <Link href="/admin/einstellungen" className="text-sm text-gray-600 hover:text-gray-900">
+                Einstellungen
               </Link>
             </>
           )}

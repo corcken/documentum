@@ -69,6 +69,7 @@ export default async function EditDocumentPage({
         initialReviewerId={latest.reviewerId ?? ""}
         initialApproverId={latest.approverId ?? ""}
         users={users}
+        hasDepartment={Boolean(doc.departmentId)}
       />
 
       <div className="mt-8">

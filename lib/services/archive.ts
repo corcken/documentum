@@ -121,3 +121,48 @@ export async function rejectDestruction(requestId: string, comment: string, user
     after: { status: "REJECTED", comment: comment.trim() },
   })
 }
+
+/** Zurückziehen einer freigegebenen Version (Archivierung / Withdrawn) */
+export async function withdrawDocument(input: {
+  documentId: string
+  versionId: string
+  userId: string
+  userRole: string
+  comment: string
+}) {
+  if (!input.comment.trim()) {
+    throw new Error("Ein Kommentar ist Pflicht (Begründung für Rückzug).")
+  }
+  const v = await prisma.documentVersion.findUnique({
+    where: { id: input.versionId },
+    include: { document: true },
+  })
+  if (!v || v.status !== "Released") {
+    throw new Error("Nur freigegebene Versionen können zurückgezogen werden.")
+  }
+
+  if (input.userRole !== "ADMIN" && v.document.ownerId !== input.userId) {
+    throw new Error("Nur Administratoren oder der Dokument-Eigentümer können Dokumente zurückziehen.")
+  }
+
+  const docType = await prisma.documentType.findUnique({ where: { id: v.document.typeId! } })
+  const retentionMonths = docType?.retentionMonths ?? null
+  const retentionEndDate = retentionMonths
+    ? new Date(new Date().setMonth(new Date().getMonth() + retentionMonths))
+    : null
+
+  const updated = await prisma.documentVersion.update({
+    where: { id: v.id },
+    data: { status: "Withdrawn", obsoleteDate: new Date(), retentionEndDate },
+  })
+
+  await logAudit({
+    userId: input.userId,
+    action: "WITHDRAW_DOCUMENT",
+    entityType: "DocumentVersion",
+    entityId: v.id,
+    after: { status: "Withdrawn", comment: input.comment },
+  })
+
+  return updated
+}

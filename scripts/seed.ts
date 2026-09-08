@@ -20,14 +20,6 @@ async function main() {
     sysRoleMap[name] = r
   }
 
-  const group = await prisma.group.upsert({
-    where: { name: 'Engineering' },
-    update: {},
-    create: {
-      name: 'Engineering'
-    }
-  })
-
   const hashedPassword = await bcrypt.hash('password123', 10)
 
   const adminUser = await prisma.user.upsert({
@@ -38,7 +30,6 @@ async function main() {
       name: 'Admin User',
       password: hashedPassword,
       roleId: sysRoleMap['ADMIN'].id,
-      groupId: group.id
     }
   })
 
@@ -51,7 +42,6 @@ async function main() {
       name: 'Petra Prüferin',
       password: hashedPassword,
       roleId: sysRoleMap['EDITOR'].id,
-      groupId: group.id
     }
   })
   const approverUser = await prisma.user.upsert({
@@ -62,7 +52,6 @@ async function main() {
       name: 'Frank Freigeber',
       password: hashedPassword,
       roleId: sysRoleMap['EDITOR'].id,
-      groupId: group.id
     }
   })
 
@@ -74,6 +63,7 @@ async function main() {
     ['auth.mode', 'standalone'],        // standalone | ldap
     ['company.name', ''],
     ['training.defaultDueDays', '30'],
+    ['workflow.quorum', 'alle'],        // einer | alle (Runde 9)
   ]
   for (const [key, value] of settings) {
     await prisma.appSetting.upsert({

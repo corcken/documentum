@@ -33,3 +33,36 @@ export const DESTRUCTION_REQUEST_STATUS_STYLES: Record<string, string> = {
   Confirmed: "bg-gray-100 text-gray-600",
   REJECTED: "bg-red-100 text-red-800",
 }
+
+export const WORKFLOW_TASK_STATUS_LABELS: Record<string, string> = {
+  Pending: "Ausstehend",
+  Approved: "Angenommen",
+  Rejected: "Abgelehnt",
+  Cancelled: "Erloschen",
+}
+
+export const DEPARTMENT_ROLES = {
+  ERSTELLER: "ERSTELLER",
+  PRUEFER: "PRUEFER",
+  FREIGEBER: "FREIGEBER",
+} as const
+
+export type DepartmentRole = (typeof DEPARTMENT_ROLES)[keyof typeof DEPARTMENT_ROLES]
+
+export const DEPARTMENT_ROLE_LABELS: Record<DepartmentRole, string> = {
+  [DEPARTMENT_ROLES.ERSTELLER]: "Ersteller",
+  [DEPARTMENT_ROLES.PRUEFER]: "Prüfer",
+  [DEPARTMENT_ROLES.FREIGEBER]: "Freigeber",
+}
+
+export const QUORUM_MODES = {
+  EINER: "einer",
+  ALLE: "alle",
+} as const
+
+export type QuorumMode = (typeof QUORUM_MODES)[keyof typeof QUORUM_MODES]
+
+export const QUORUM_MODE_LABELS: Record<string, string> = {
+  einer: "Einer (Erster Abschluss entscheidet)",
+  alle: "Alle (Jeder muss zustimmen)",
+}

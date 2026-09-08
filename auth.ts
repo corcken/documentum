@@ -21,7 +21,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           
           const user = await prisma.user.findUnique({
             where: { email },
-            include: { role: true, group: true }
+            include: { role: true }
           });
           
           if (!user || !user.isActive) return null;
@@ -34,7 +34,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               name: user.name,
               email: user.email,
               role: user.role?.name,
-              groupId: user.groupId,
               theme: user.theme ?? "hell",
             };
           }
@@ -48,7 +47,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.role = user.role;
-        token.groupId = user.groupId;
         token.theme = (user as any).theme;
       }
       return token;
@@ -56,7 +54,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, token }) {
       if (token && session.user) {
         session.user.role = token.role as string | undefined;
-        session.user.groupId = token.groupId as string | null | undefined;
         (session.user as any).theme = (token.theme as string) || "hell";
         if (token.sub) {
           session.user.id = token.sub;

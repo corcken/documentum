@@ -82,6 +82,11 @@ export async function canReadVersion(userId: string, versionId: string): Promise
   })
   if (!v) return false
 
+  // Externe Nutzer sehen keine zurückgezogenen oder vernichteten Fassungen
+  if (user.isExternal && (v.status === "Withdrawn" || v.status === "Destroyed")) {
+    return false
+  }
+
   // 1. ADMIN → immer
   if (user.role?.name === "ADMIN") return true
 
@@ -95,9 +100,13 @@ export async function canReadVersion(userId: string, versionId: string): Promise
     return true
   }
 
-  // 6. Withdrawn/Destroyed → nur Admin (Audit-Sicht) - da Admin oben abgefangen wurde, hier false
-  // (Beteiligte der alten Fassung sehen es über Regel 2: Historie)
-  if (v.status === "Withdrawn" || v.status === "Destroyed") return false
+  // 6. Withdrawn → für alle internen aktiven Benutzer (auch VIEWER) sichtbar (Q25)
+  if (v.status === "Withdrawn") {
+    return !user.isExternal && user.isActive
+  }
+
+  // Destroyed → nur Admin (bereits oben abgehandelt)
+  if (v.status === "Destroyed") return false
 
   // 3. Status Draft/In_Review/In_Approval → sonst niemand
   if (v.status === "Draft" || v.status === "In_Review" || v.status === "In_Approval") return false

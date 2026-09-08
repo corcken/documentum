@@ -25,10 +25,11 @@ const createSchema = z.object({
   title: z.string().min(3, "Titel ist zu kurz"),
   typeId: z.string().min(1, "Dokumenttyp fehlt"),
   content: z.string().optional().default(""),
+  departmentId: z.string().optional(),
   departmentIds: z.array(z.string()).optional().default([]),
   jobRoleIds: z.array(z.string()).optional().default([]),
-  reviewerId: z.string().min(1, "Prüfer fehlt"),
-  approverId: z.string().min(1, "Genehmiger fehlt"),
+  reviewerId: z.string().optional(),
+  approverId: z.string().optional(),
   visibility: z.string().optional(),
   reviewIntervalMonths: z.coerce.number().optional(),
   templateId: z.string().optional(),
@@ -40,15 +41,22 @@ export async function createDocumentAction(_prev: CreateDocumentState, formData:
   const session = await requireUser()
   if (session.user.role === "VIEWER") redirect("/documents")
 
+  const rawDept = (formData.get("responsibleDepartmentId") as string) || (formData.get("departmentId") as string)
+  const departmentId = rawDept && rawDept.trim() ? rawDept.trim() : undefined
+
+  const scopeDepts = formData.getAll("scopeDepartmentId")
+  const departmentIds = scopeDepts.length > 0 ? (scopeDepts as string[]) : (formData.getAll("departmentId") as string[]).filter(id => id !== departmentId)
+
   const parsed = createSchema.safeParse({
     documentNumber: formData.get("documentNumber") ?? undefined,
     title: formData.get("title") ?? undefined,
     typeId: formData.get("typeId") ?? undefined,
     content: formData.get("content") ?? undefined,
-    departmentIds: formData.getAll("departmentId"),
+    departmentId,
+    departmentIds,
     jobRoleIds: formData.getAll("jobRoleId"),
-    reviewerId: formData.get("reviewerId") ?? undefined,
-    approverId: formData.get("approverId") ?? undefined,
+    reviewerId: (formData.get("reviewerId") as string) || undefined,
+    approverId: (formData.get("approverId") as string) || undefined,
     visibility: (formData.get("visibility") as string) || undefined,
     reviewIntervalMonths: formData.get("reviewIntervalMonths") ? Number(formData.get("reviewIntervalMonths")) : undefined,
     templateId: (formData.get("templateId") as string) || undefined,
@@ -90,8 +98,8 @@ export async function saveDraftAction(_prev: WorkflowActionState, formData: Form
   const documentId = String(formData.get("documentId") ?? "")
   const title = String(formData.get("title") ?? "")
   const content = String(formData.get("content") ?? "")
-  const reviewerId = String(formData.get("reviewerId") ?? "")
-  const approverId = String(formData.get("approverId") ?? "")
+  const reviewerId = (formData.get("reviewerId") as string) || undefined
+  const approverId = (formData.get("approverId") as string) || undefined
   const changeReason = String(formData.get("changeReason") ?? "")
   try {
     await saveDraftVersion({ documentId, title, content, changeReason, userId, reviewerId, approverId })

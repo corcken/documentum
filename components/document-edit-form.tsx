@@ -16,6 +16,7 @@ export function DocumentEditForm({
   initialReviewerId,
   initialApproverId,
   users,
+  hasDepartment = false,
 }: {
   documentId: string
   initialTitle: string
@@ -23,6 +24,7 @@ export function DocumentEditForm({
   initialReviewerId: string
   initialApproverId: string
   users: UserOption[]
+  hasDepartment?: boolean
 }) {
   const [state, formAction, pending] = useActionState(saveDraftAction, null)
 
@@ -58,46 +60,50 @@ export function DocumentEditForm({
           className="w-full rounded-lg border border-input bg-white px-3 py-2 text-sm"
         />
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="reviewerId">Prüfer (Review)</Label>
-          <select
-            id="reviewerId"
-            name="reviewerId"
-            required
-            defaultValue={initialReviewerId}
-            className="h-9 w-full rounded-lg border border-input bg-white px-3 text-sm"
-          >
-            <option value="" disabled>
-              Prüfer wählen
-            </option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name ?? u.email}
-              </option>
-            ))}
-          </select>
+      {hasDepartment ? (
+        <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 text-xs text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-200">
+          ℹ️ Prüfer und Genehmiger werden beim Einreichen zur Prüfung automatisch anhand der für den verantwortlichen Bereich hinterlegten Rollen zugewiesen.
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="approverId">Genehmiger (Freigabe)</Label>
-          <select
-            id="approverId"
-            name="approverId"
-            required
-            defaultValue={initialApproverId}
-            className="h-9 w-full rounded-lg border border-input bg-white px-3 text-sm"
-          >
-            <option value="" disabled>
-              Genehmiger wählen
-            </option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name ?? u.email}
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="reviewerId">Prüfer (Review)</Label>
+            <select
+              id="reviewerId"
+              name="reviewerId"
+              defaultValue={initialReviewerId}
+              className="h-9 w-full rounded-lg border border-input bg-white px-3 text-sm"
+            >
+              <option value="" disabled>
+                Prüfer wählen
               </option>
-            ))}
-          </select>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name ?? u.email}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="approverId">Genehmiger (Freigabe)</Label>
+            <select
+              id="approverId"
+              name="approverId"
+              defaultValue={initialApproverId}
+              className="h-9 w-full rounded-lg border border-input bg-white px-3 text-sm"
+            >
+              <option value="" disabled>
+                Genehmiger wählen
+              </option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name ?? u.email}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-      </div>
+      )}
       <Button type="submit" disabled={pending}>
         {pending ? "Wird gespeichert…" : "Speichern (neue Version)"}
       </Button>

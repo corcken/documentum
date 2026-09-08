@@ -19,6 +19,8 @@ import { LifecycleChain } from "@/components/lifecycle-chain"
 import { DocumentVersionHistory } from "@/components/document-version-history"
 import { getUserAvatars } from "@/lib/services/avatar"
 import { UserAvatar } from "@/components/user-avatar"
+import { WithdrawnVersionsArchive } from "@/components/withdrawn-versions-archive"
+import { DocumentReviewers } from "@/components/document-reviewers"
 
 export default async function DocumentDetailPage({
   params,
@@ -52,10 +54,28 @@ export default async function DocumentDetailPage({
   const scopeRoles = current ? [...current.scopeJobRoles] : []
   const historyAsc = [...visibleVersions].reverse() // älteste zuerst
 
+  const currentUser = await prisma.user.findUnique({
+    where: { id: session.user.id! },
+    select: { isExternal: true },
+  })
+  const isExternal = currentUser?.isExternal ?? false
+  const withdrawnVersions = visibleVersions.filter((v) => v.status === "Withdrawn")
+
+  let deptPruefer: { id: string; name: string | null; email: string }[] = []
+  let deptFreigeber: { id: string; name: string | null; email: string }[] = []
+  if (doc.departmentId && current?.status === "Draft") {
+    const { getDepartmentRoleUsers } = await import("@/lib/services/department-roles")
+    deptPruefer = await getDepartmentRoleUsers(doc.departmentId, "PRUEFER")
+    deptFreigeber = await getDepartmentRoleUsers(doc.departmentId, "FREIGEBER")
+  }
+
   const userIdsToFetch = [
     doc.ownerId,
     current?.reviewerId,
     current?.approverId,
+    ...(current?.workflowTasks.map((t) => t.assignedToId) ?? []),
+    ...deptPruefer.map((u) => u.id),
+    ...deptFreigeber.map((u) => u.id),
     ...visibleVersions.map((v) => v.createdById),
   ].filter(Boolean) as string[]
   const avatarMap = await getUserAvatars(userIdsToFetch)
@@ -160,6 +180,17 @@ export default async function DocumentDetailPage({
               />
               <span className="font-medium">{doc.owner?.name ?? doc.owner?.email ?? "—"}</span>
             </div>
+            {doc.department && (
+              <div>
+                <span className="text-gray-500">Verantwortlicher Bereich: </span>
+                <span className="font-medium text-gray-800">{doc.department.name}</span>
+                {doc.department.abbreviation && (
+                  <Badge variant="outline" className="ml-1.5 font-mono text-[11px] px-1.5 py-0">
+                    {doc.department.abbreviation}
+                  </Badge>
+                )}
+              </div>
+            )}
             <div>Erstellt: {new Date(doc.createdAt).toLocaleDateString("de-DE")}</div>
             {current?.effectiveDate && (
               <div>Gültig ab: {new Date(current.effectiveDate).toLocaleDateString("de-DE")}</div>
@@ -169,29 +200,12 @@ export default async function DocumentDetailPage({
             )}
           </div>
           {!isViewer && current && (
-            <div className="border-t pt-3 text-sm text-gray-600 flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-1.5">
-                <span>Prüfer:</span>
-                <UserAvatar
-                  name={current.reviewer?.name}
-                  email={current.reviewer?.email}
-                  storageKey={current.reviewerId ? avatarMap.get(current.reviewerId) : null}
-                  size="sm"
-                />
-                <span className="font-medium">{current.reviewer?.name ?? current.reviewer?.email ?? "—"}</span>
-              </div>
-              <span>·</span>
-              <div className="flex items-center gap-1.5">
-                <span>Genehmiger:</span>
-                <UserAvatar
-                  name={current.approver?.name}
-                  email={current.approver?.email}
-                  storageKey={current.approverId ? avatarMap.get(current.approverId) : null}
-                  size="sm"
-                />
-                <span className="font-medium">{current.approver?.name ?? current.approver?.email ?? "—"}</span>
-              </div>
-            </div>
+            <DocumentReviewers
+              current={current}
+              deptPruefer={deptPruefer}
+              deptFreigeber={deptFreigeber}
+              avatarMap={avatarMap}
+            />
           )}
         </CardContent>
       </Card>
@@ -268,6 +282,10 @@ export default async function DocumentDetailPage({
 
       {current && (
         <LifecycleChain status={current.status} timestamps={lifecycleTimestamps} />
+      )}
+
+      {!isExternal && withdrawnVersions.length > 0 && (
+        <WithdrawnVersionsArchive versions={withdrawnVersions} />
       )}
 
       <DocumentVersionHistory

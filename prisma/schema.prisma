@@ -30,6 +30,7 @@ enum WorkflowTaskStatus {
   Pending
   Approved
   Rejected
+  Cancelled
 }
 
 enum TrainingStatus {
@@ -44,15 +45,41 @@ enum TrainingStatus {
 
 // Abteilungsbaum: parentId = übergeordnete Abteilung (beliebig tief)
 model Department {
-  id              String            @id @default(cuid())
+  id              String                     @id @default(cuid())
   parentId        String?
-  parent          Department?       @relation("DepartmentTree", fields: [parentId], references: [id], onDelete: Restrict)
-  children        Department[]      @relation("DepartmentTree")
+  parent          Department?                @relation("DepartmentTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children        Department[]               @relation("DepartmentTree")
   name            String
   abbreviation    String?
   description     String?
+  quorumMode      String?                    // "einer" | "alle", null = App-Standard
   users           User[]
   scopedDocuments ScopeDepartment[]
+  documents       Document[]
+  leads           DepartmentLead[]
+  roleAssignments DepartmentRoleAssignment[]
+}
+
+model DepartmentLead {
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@id([departmentId, userId])
+}
+
+model DepartmentRoleAssignment {
+  id           String     @id @default(cuid())
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         String     // ERSTELLER, PRUEFER, FREIGEBER (lib/constants.ts)
+  createdAt    DateTime   @default(now())
+
+  @@unique([departmentId, userId, role])
 }
 
 model JobRole {
@@ -71,13 +98,6 @@ model Role {
   users       User[]
 }
 
-// Vorläufig (aus Scaffold) — wird evtl. durch Department ersetzt
-model Group {
-  id    String @id @default(cuid())
-  name  String @unique
-  users User[]
-}
-
 model User {
   id       String  @id @default(cuid())
   username String? @unique
@@ -90,12 +110,13 @@ model User {
 
   roleId       String?
   role         Role?       @relation(fields: [roleId], references: [id])
-  groupId      String?
-  group        Group?      @relation(fields: [groupId], references: [id])
   departmentId String?
   department   Department? @relation(fields: [departmentId], references: [id])
   jobRoleId    String?
   jobRole      JobRole?    @relation(fields: [jobRoleId], references: [id])
+
+  departmentLeads           DepartmentLead[]
+  departmentRoleAssignments DepartmentRoleAssignment[]
 
   ownedDocuments  Document[]        @relation("DocumentOwner")
   createdVersions DocumentVersion[] @relation("VersionCreator")
@@ -132,6 +153,8 @@ model Document {
   documentNumber String            @unique
   typeId         String?
   type           DocumentType?     @relation(fields: [typeId], references: [id])
+  departmentId   String?
+  department     Department?       @relation(fields: [departmentId], references: [id])
   ownerId        String?
   owner          User?             @relation("DocumentOwner", fields: [ownerId], references: [id])
   reviewIntervalMonths Int?

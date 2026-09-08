@@ -12,9 +12,14 @@ import { ChevronsDownUp, ChevronsUpDown, FolderTree, Network } from "lucide-reac
 export interface OrgViewContainerProps {
   tree: OrgUnitNode[]
   showAdminActions?: boolean
+  manageableDepartmentIds?: string[]
 }
 
-export function OrgViewContainer({ tree, showAdminActions = true }: OrgViewContainerProps) {
+export function OrgViewContainer({
+  tree,
+  showAdminActions = true,
+  manageableDepartmentIds,
+}: OrgViewContainerProps) {
   const t = useTranslations("Org")
   const [viewMode, setViewMode] = useState<"list" | "graph">("list")
 
@@ -125,6 +130,7 @@ export function OrgViewContainer({ tree, showAdminActions = true }: OrgViewConta
           expandedIds={expandedIds}
           onToggle={handleToggle}
           showAdminActions={showAdminActions}
+          manageableDepartmentIds={manageableDepartmentIds}
         />
       ) : (
         <OrgGraphView
