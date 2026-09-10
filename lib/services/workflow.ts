@@ -219,16 +219,76 @@ export async function returnToAuthor(input: { versionId: string; comment: string
   return v
 }
 
+import bcrypt from "bcryptjs"
+
+export type ApproveVersionInput = {
+  versionId: string
+  userId: string
+  password?: string
+  signatureMeaning?: string
+}
+
 /**
  * Genehmigung: je nach Quorum Released oder warten auf übrige Freigeber.
- * Autorisierung läuft über den offenen Approval-Task des Users.
+ * Autorisierung läuft über den offenen Approval-Task des Users + Re-Authentifizierung (Part 11).
  */
-export async function approveVersion(input: { versionId: string; userId: string }) {
+export async function approveVersion(input: ApproveVersionInput) {
   const v = await prisma.documentVersion.findUnique({
     where: { id: input.versionId },
     include: { document: { include: { type: true } } },
   })
   if (!v) throw new Error("Version nicht gefunden.")
+
+  const user = await prisma.user.findUnique({
+    where: { id: input.userId },
+    include: { role: true },
+  })
+  if (!user || !user.isActive) {
+    throw new Error("Benutzer nicht gefunden oder inaktiv.")
+  }
+
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    throw new Error("Ihr Konto ist vorübergehend gesperrt. Bitte versuchen Sie es in 15 Minuten erneut.")
+  }
+
+  if (!input.password) {
+    throw new Error("Zur rechtsgültigen Freigabe (FDA 21 CFR Part 11) ist die Eingabe Ihres Passworts als elektronische Signatur erforderlich.")
+  }
+
+  const matches = await bcrypt.compare(input.password, user.password)
+  if (!matches) {
+    const newAttempts = (user.failedLoginAttempts || 0) + 1
+    const lockAccount = newAttempts >= 5
+    const lockedUntil = lockAccount ? new Date(Date.now() + 15 * 60 * 1000) : null
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { failedLoginAttempts: lockAccount ? 0 : newAttempts, lockedUntil },
+    })
+    await logAudit({
+      userId: user.id,
+      action: lockAccount ? "ACCOUNT_LOCKED" : "SIGNATURE_VERIFICATION_FAILED",
+      entityType: "DocumentVersion",
+      entityId: input.versionId,
+      after: { attempts: newAttempts, locked: lockAccount },
+    })
+    throw new Error(lockAccount ? "Konto wegen zu vieler Fehlversuche für 15 Minuten gesperrt." : "Das eingegebene Passwort zur elektronischen Signatur ist nicht korrekt.")
+  }
+
+  if (user.failedLoginAttempts > 0 || user.lockedUntil) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { failedLoginAttempts: 0, lockedUntil: null },
+    })
+  }
+
+  const signature = {
+    signerId: user.id,
+    signerName: user.name ?? user.email,
+    signerEmail: user.email,
+    role: user.role?.name ?? "FREIGEBER",
+    meaning: input.signatureMeaning || "Ich habe das Dokument geprüft und gebe es hiermit gemäß QM-Vorgaben frei.",
+    timestamp: new Date().toISOString(),
+  }
 
   const myTask = await prisma.workflowTask.findFirst({
     where: {
@@ -260,7 +320,7 @@ export async function approveVersion(input: { versionId: string; userId: string 
     action: "APPROVE",
     entityType: "WorkflowTask",
     entityId: taskToComplete.id,
-    after: { status: "Approved" },
+    after: { status: "Approved", signature },
   })
 
   if (v.status === "Released") {
@@ -268,7 +328,7 @@ export async function approveVersion(input: { versionId: string; userId: string 
     const nextReview = calculateNextDate(v.document.reviewIntervalMonths)
     await prisma.documentVersion.update({
       where: { id: v.id },
-      data: { nextReviewDate: nextReview },
+      data: { nextReviewDate: nextReview, electronicSignature: signature },
     })
 
     await logAudit({
@@ -276,7 +336,7 @@ export async function approveVersion(input: { versionId: string; userId: string 
       action: "APPROVE_REVIEW_WITHOUT_CHANGE",
       entityType: "DocumentVersion",
       entityId: v.id,
-      after: { nextReviewDate: nextReview },
+      after: { nextReviewDate: nextReview, signature },
     })
     notifyVersionApproved(v.documentId, v.id, input.userId)
     return v
@@ -294,14 +354,14 @@ export async function approveVersion(input: { versionId: string; userId: string 
       entityId: v.id,
       after: { quorum: "einer", phase: "Approval" },
     })
-    await releaseVersionInternal(v, input.userId)
+    await releaseVersionInternal(v, input.userId, signature)
   } else {
     // Quorum alle: Erst wenn alle Freigeber zugestimmt haben, erfolgt Release
     const remainingPending = await prisma.workflowTask.count({
       where: { documentVersionId: v.id, taskType: "Approval", status: "Pending" },
     })
     if (remainingPending === 0) {
-      await releaseVersionInternal(v, input.userId)
+      await releaseVersionInternal(v, input.userId, signature)
     }
   }
 

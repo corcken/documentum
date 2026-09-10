@@ -13,7 +13,7 @@ import { DOCUMENT_STATUS_LABELS, DOCUMENT_STATUS_STYLES } from "@/lib/constants"
 import { formatVersion } from "@/lib/version"
 import { restoreAction, markAsTemplateAction, unmarkAsTemplateAction } from "../actions"
 import { canManageDocumentTemplate } from "@/lib/services/template"
-import { ChevronLeft } from "lucide-react"
+import { ChevronLeft, ShieldCheck } from "lucide-react"
 import { WorkflowActions } from "@/components/workflow-actions"
 import { LifecycleChain } from "@/components/lifecycle-chain"
 import { DocumentVersionHistory } from "@/components/document-version-history"
@@ -206,6 +206,20 @@ export default async function DocumentDetailPage({
               deptFreigeber={deptFreigeber}
               avatarMap={avatarMap}
             />
+          )}
+          {current?.electronicSignature && (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-3 text-xs text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-200">
+              <div className="flex items-center gap-2 font-semibold">
+                <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400" />
+                <span>Elektronisch signiert & freigegeben (FDA 21 CFR Part 11 / EU GMP Annex 11)</span>
+              </div>
+              <div className="mt-1 text-emerald-800 dark:text-emerald-300">
+                Unterzeichnet von: <strong>{(current.electronicSignature as any).signerName}</strong> ({(current.electronicSignature as any).signerEmail}) · {new Date((current.electronicSignature as any).timestamp).toLocaleString("de-DE")}
+              </div>
+              <div className="mt-0.5 italic text-emerald-700/90 dark:text-emerald-400/90">
+                Bedeutung: „{(current.electronicSignature as any).meaning}“
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -3,6 +3,7 @@ import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { formatVersion } from "@/lib/version"
+import { Lock, ShieldCheck, KeyRound } from "lucide-react"
 import {
   approveAction,
   approveReviewAction,
@@ -123,17 +124,64 @@ export function WorkflowActions({
     return (
       <Card className="border-orange-200 bg-orange-50/50">
         <CardHeader>
-          <CardTitle className="text-base">In Freigabe (Freeze, {versionLabel})</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Lock className="size-4 text-orange-600" />
+            In Freigabe (Freeze, {versionLabel})
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
           <p className="text-sm text-gray-600">
             Du bist als Genehmiger eingetragen. Mit der Freigabe wird die Version zu{" "}
             <span className="font-medium">{current.majorVersion + 1}.0</span>.
           </p>
-          <form action={approveAction}>
+
+          <form action={approveAction} className="rounded-lg border border-orange-200 bg-card p-4 space-y-3 shadow-xs">
+            <div className="flex items-center gap-2 text-sm font-semibold text-orange-950 dark:text-orange-200">
+              <ShieldCheck className="size-4 text-orange-600 dark:text-orange-400" />
+              Elektronische Signatur (FDA 21 CFR Part 11 / EU GMP)
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Zur rechtsverbindlichen Freigabe ist eine Bestätigung mit Ihrem Passwort erforderlich.
+            </p>
             <input type="hidden" name="versionId" value={current.id} />
-            <Button type="submit">Genehmigen (wird zu {current.majorVersion + 1}.0)</Button>
+            <input type="hidden" name="documentId" value={documentId} />
+            
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">Signaturbedeutung</label>
+              <select
+                name="signatureMeaning"
+                className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground shadow-xs focus:outline-none focus:ring-1 focus:ring-orange-500"
+                defaultValue="Ich habe dieses Dokument geprüft und gebe es hiermit zur verbindlichen Nutzung frei."
+              >
+                <option value="Ich habe dieses Dokument geprüft und gebe es hiermit zur verbindlichen Nutzung frei.">
+                  Ich habe dieses Dokument geprüft und gebe es hiermit zur verbindlichen Nutzung frei.
+                </option>
+                <option value="Fachliche und regulatorische Freigabe gemäß QM-Vorgaben.">
+                  Fachliche und regulatorische Freigabe gemäß QM-Vorgaben.
+                </option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">Ihr Passwort zur Bestätigung</label>
+              <div className="relative">
+                <KeyRound className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="password"
+                  name="password"
+                  required
+                  placeholder="Passwort eingeben…"
+                  className="w-full rounded-md border border-input bg-background py-1.5 pl-8 pr-3 text-xs text-foreground shadow-xs focus:outline-none focus:ring-1 focus:ring-orange-500"
+                />
+              </div>
+            </div>
+
+            <Button type="submit" className="w-full bg-orange-600 hover:bg-orange-700 text-white gap-2">
+              <ShieldCheck className="size-4" />
+              Rechtsverbindlich genehmigen (wird zu {current.majorVersion + 1}.0)
+            </Button>
           </form>
+
           <ReturnForm versionId={current.id} label="Zurück an den Ersteller mit Kommentar" />
         </CardContent>
       </Card>
@@ -195,14 +243,47 @@ export function WorkflowActions({
             <CardHeader>
               <CardTitle className="text-base">In Freigabe ohne Änderung (Freeze, {versionLabel})</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
               <p className="text-sm text-gray-600">
                 Du bist als Genehmiger eingetragen. Mit der Freigabe wird das Prüfdatum der aktuellen Version aktualisiert.
               </p>
-              <form action={approveAction}>
+
+              <form action={approveAction} className="rounded-lg border border-orange-200 bg-card p-4 space-y-3 shadow-xs">
+                <div className="flex items-center gap-2 text-sm font-semibold text-orange-950 dark:text-orange-200">
+                  <ShieldCheck className="size-4 text-orange-600 dark:text-orange-400" />
+                  Elektronische Signatur (FDA 21 CFR Part 11 / EU GMP)
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Bestätigen Sie den Abschluss der periodischen Prüfung durch erneute Passworteingabe.
+                </p>
                 <input type="hidden" name="versionId" value={current.id} />
-                <Button type="submit">Prüfung ohne Änderung abschließen</Button>
+                <input type="hidden" name="documentId" value={documentId} />
+                <input
+                  type="hidden"
+                  name="signatureMeaning"
+                  value="Periodische Überprüfung ohne Änderung erfolgreich abgeschlossen und bestätigt."
+                />
+
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Ihr Passwort zur Bestätigung</label>
+                  <div className="relative">
+                    <KeyRound className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="password"
+                      name="password"
+                      required
+                      placeholder="Passwort eingeben…"
+                      className="w-full rounded-md border border-input bg-background py-1.5 pl-8 pr-3 text-xs text-foreground shadow-xs focus:outline-none focus:ring-1 focus:ring-orange-500"
+                    />
+                  </div>
+                </div>
+
+                <Button type="submit" className="w-full bg-orange-600 hover:bg-orange-700 text-white gap-2">
+                  <ShieldCheck className="size-4" />
+                  Prüfung ohne Änderung rechtsverbindlich abschließen
+                </Button>
               </form>
+
               <ReturnForm versionId={current.id} label="Zurück an den Ersteller mit Kommentar" />
             </CardContent>
           </Card>

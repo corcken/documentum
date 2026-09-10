@@ -181,6 +181,7 @@ model DocumentVersion {
   obsoleteDate  DateTime?
   nextReviewDate DateTime?
   retentionEndDate DateTime?
+  electronicSignature Json?
   createdAt     DateTime           @default(now())
   createdById   String?
   createdBy     User?              @relation("VersionCreator", fields: [createdById], references: [id])

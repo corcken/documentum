@@ -138,13 +138,25 @@ export async function returnToAuthorAction(formData: FormData) {
   redirect(`/documents/${v.documentId}`)
 }
 
-/** Genehmigen → Major+1, Minor 0, Released. */
+/** Genehmigen → Major+1, Minor 0, Released mit elektronischer Signatur (Part 11). */
 export async function approveAction(formData: FormData) {
   const userId = await actorId()
   const versionId = String(formData.get("versionId") ?? "")
-  const v = await approveVersion({ versionId, userId })
-  revalidatePath(`/documents/${v.documentId}`)
-  redirect(`/documents/${v.documentId}`)
+  const password = String(formData.get("password") ?? "")
+  const signatureMeaning = String(formData.get("signatureMeaning") ?? "")
+  const docId = String(formData.get("documentId") ?? "")
+
+  try {
+    const v = await approveVersion({ versionId, userId, password, signatureMeaning })
+    revalidatePath(`/documents/${v.documentId}`)
+    redirect(`/documents/${v.documentId}`)
+  } catch (e: any) {
+    if (e?.message === "NEXT_REDIRECT" || e?.digest?.startsWith?.("NEXT_REDIRECT")) {
+      throw e
+    }
+    const redirectUrl = docId ? `/documents/${docId}` : `/documents`
+    redirect(`${redirectUrl}?error=${encodeURIComponent(e instanceof Error ? e.message : "Freigabe fehlgeschlagen.")}`)
+  }
 }
 
 /** Dokument zurückziehen (Withdrawn). */

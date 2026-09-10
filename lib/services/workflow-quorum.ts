@@ -191,7 +191,8 @@ export async function releaseVersionInternal(
       type?: { retentionMonths: number | null } | null
     }
   },
-  userId: string
+  userId: string,
+  signature?: Record<string, any>
 ) {
   const maxMajor = await prisma.documentVersion.aggregate({
     where: { documentId: v.documentId },
@@ -215,6 +216,7 @@ export async function releaseVersionInternal(
         status: "Released",
         effectiveDate: new Date(),
         nextReviewDate: calculateNextDate(v.document.reviewIntervalMonths),
+        electronicSignature: signature ? (signature as any) : undefined,
       },
     }),
   ]
@@ -227,7 +229,7 @@ export async function releaseVersionInternal(
     entityType: "DocumentVersion",
     entityId: v.id,
     before: { major: v.majorVersion, status: "In_Approval" },
-    after: { major: newMajor, minor: 0, status: "Released" },
+    after: { major: newMajor, minor: 0, status: "Released", signature },
   })
 }
 
