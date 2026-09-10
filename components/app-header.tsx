@@ -59,6 +59,12 @@ export async function AppHeader() {
               <Link href="/admin/einstellungen" className="text-sm text-gray-600 hover:text-gray-900">
                 Einstellungen
               </Link>
+              <Link
+                href="/admin/entwicklung"
+                className="text-sm font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400"
+              >
+                Entwicklung
+              </Link>
             </>
           )}
         </nav>

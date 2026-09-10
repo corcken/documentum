@@ -5,7 +5,10 @@ import crypto from "crypto"
 import nodemailer from "nodemailer"
 
 function getSecretKey(): Buffer {
-  const secret = process.env.AUTH_SECRET || "default-documentum-smtp-secret-key"
+  const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET
+  if (!secret) {
+    throw new Error("Kritischer Konfigurationsfehler: AUTH_SECRET ist nicht definiert.")
+  }
   return crypto.createHash("sha256").update(secret).digest()
 }
 

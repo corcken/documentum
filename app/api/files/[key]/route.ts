@@ -100,6 +100,8 @@ export async function GET(
       "Content-Type": asset.mimeType,
       "Content-Disposition": disposition,
       "Cache-Control": "private, max-age=86400",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "default-src 'none'; sandbox",
     },
   })
 }

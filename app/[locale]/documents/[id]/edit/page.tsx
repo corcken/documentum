@@ -26,6 +26,13 @@ export default async function EditDocumentPage({
     redirect(`/documents/${id}?error=${encodeURIComponent("Das Dokument ist nicht im Entwurfs-Status (Freeze oder freigegeben).")}`)
   }
 
+  const { assertCanEditVersion } = await import("@/lib/services/document-helpers")
+  try {
+    await assertCanEditVersion(session.user.id!, latest.id)
+  } catch (e) {
+    redirect(`/documents/${id}?error=${encodeURIComponent(e instanceof Error ? e.message : "Keine Berechtigung zur Bearbeitung.")}`)
+  }
+
   // Prüfer/Genehmiger: aktive Benutzer mit Schreibrechten (ADMIN/EDITOR)
   const users = await prisma.user.findMany({
     where: { isActive: true, role: { name: { in: ["ADMIN", "EDITOR"] } } },

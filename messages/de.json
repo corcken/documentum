@@ -14,6 +14,7 @@
     "audit": "Audit-Log",
     "stats": "Auswertungen",
     "mediathek": "Mediathek",
+    "development": "Entwicklung",
     "logout": "Abmelden",
     "userMenuAria": "Benutzermenü öffnen"
   },
@@ -74,7 +75,9 @@
     "doctypesDesc": "Dokumenttypen und Schulungspflicht verwalten",
     "jobrolesDesc": "Job-Rollen für Geltungsbereiche pflegen",
     "auditDesc": "Vollständiges Änderungsprotokoll (GMP)",
-    "statsDesc": "Kennzahlen und grafische Auswertungen"
+    "statsDesc": "Kennzahlen und grafische Auswertungen",
+    "devTitle": "Entwicklung",
+    "devDesc": "Testwerkzeuge & Benutzer-Impersonation"
   },
   "DepartmentRoles": {
     "title": "Rollen & Leiter",
@@ -103,5 +106,37 @@
     "quorumAlle": "Alle (Jeder muss zustimmen)",
     "saveQuorum": "Quorum speichern",
     "accessDenied": "Keine Berechtigung zur Verwaltung dieses Bereichs"
+  },
+  "Development": {
+    "title": "Entwicklung",
+    "subtitle": "Entwicklungs- und Testwerkzeuge. Dieser Bereich dient ausschließlich dem schnellen Testen während der Entwicklung.",
+    "badge": "Entwicklungsmodus",
+    "noticeTitle": "Entwicklungswerkzeuge — Identitätswechsel (Impersonation)",
+    "noticeDesc": "Hier können Sie sich mit einem Klick als beliebiger registrierter Benutzer anmelden, um Workflows, Dokumentenlenkung und Berechtigungen aus dessen Perspektive zu testen.",
+    "noReturnHint": "Weg zurück: Um wieder Administrator zu werden, melden Sie sich einfach über das Benutzermenü (oben rechts) ab und erneut als Admin an.",
+    "auditNote": "GMP-Hinweis: Jeder Identitätswechsel wird im Audit-Trail lückenlos als DEV_IMPERSONATE protokolliert.",
+    "quickSwitchTitle": "Schnellzugriff auf Test-Personas",
+    "quickSwitchSubtitle": "Direkt in typische Rollen für den GMP-Freigabe-Workflow schlüpfen",
+    "allUsersTitle": "Alle Benutzer",
+    "allUsersSubtitle": "Wählen Sie einen Benutzer aus der Liste, um sich in dessen Sitzung zu versetzen.",
+    "searchPlaceholder": "Nach Name, E-Mail, Bereich oder Rolle suchen...",
+    "filterRole": "Rolle",
+    "allRoles": "Alle Rollen",
+    "filterButton": "Filtern",
+    "resetFilter": "Zurücksetzen",
+    "thUser": "Benutzer",
+    "thRole": "System-Rolle",
+    "thDepartment": "Organisationseinheit",
+    "thJobRole": "Job-Rolle",
+    "thTasks": "Offene Aufgaben",
+    "thAction": "Aktion",
+    "loginAs": "Als Benutzer anmelden",
+    "currentActive": "Aktuell angemeldet",
+    "noUsersFound": "Keine Benutzer gefunden, die den Suchkriterien entsprechen.",
+    "noTasks": "Keine Aufgaben",
+    "openTasksCount": "{count, plural, =1 {1 offene Aufgabe} other {# offene Aufgaben}}",
+    "errorGeneral": "Fehler beim Benutzerwechsel aufgetreten.",
+    "errorMissingUser": "Kein Ziel-Benutzer angegeben.",
+    "errorImpersonationFailed": "Identitätswechsel fehlgeschlagen. Bitte erneut versuchen."
   }
 }

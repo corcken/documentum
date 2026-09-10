@@ -26,6 +26,8 @@ function tiptapToText(json: string | null): string {
   }
 }
 
+import { canReadVersion } from "@/lib/services/document-helpers"
+
 export default async function DiffPage({
   params,
   searchParams,
@@ -45,6 +47,12 @@ export default async function DiffPage({
     prisma.documentVersion.findUnique({ where: { id: sp.bis } }),
   ])
   if (!von || !bis || von.documentId !== id || bis.documentId !== id) notFound()
+
+  const [canReadVon, canReadBis] = await Promise.all([
+    canReadVersion(session.user.id!, von.id),
+    canReadVersion(session.user.id!, bis.id),
+  ])
+  if (!canReadVon || !canReadBis) notFound()
 
   const textVon = tiptapToText(von.content)
   const textBis = tiptapToText(bis.content)

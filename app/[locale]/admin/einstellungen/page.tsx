@@ -5,7 +5,7 @@ import { updateWorkflowQuorumAction } from "./actions"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { FileText, Briefcase, History, BarChart3, ChevronRight, Check } from "lucide-react"
+import { FileText, Briefcase, History, BarChart3, ChevronRight, Check, Wrench } from "lucide-react"
 
 export default async function SettingsPage({
   searchParams,
@@ -147,6 +147,27 @@ export default async function SettingsPage({
               <div>
                 <div className="text-sm font-medium">Auswertungen</div>
                 <div className="text-xs text-muted-foreground">{t("statsDesc")}</div>
+              </div>
+            </div>
+            <ChevronRight className="size-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+          </Link>
+
+          <Link
+            href="/admin/entwicklung"
+            className="flex items-center justify-between p-4 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/20 dark:bg-amber-950/10 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 transition-colors group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 items-center justify-center rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                <Wrench className="size-4" />
+              </div>
+              <div>
+                <div className="text-sm font-medium flex items-center gap-2">
+                  {t("devTitle")}
+                  <span className="rounded-full bg-amber-100 dark:bg-amber-900/60 px-1.5 py-0.2 text-[10px] font-semibold text-amber-800 dark:text-amber-300">
+                    Dev
+                  </span>
+                </div>
+                <div className="text-xs text-muted-foreground">{t("devDesc")}</div>
               </div>
             </div>
             <ChevronRight className="size-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />

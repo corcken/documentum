@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials"
 import { prisma } from "./lib/prisma"
 import bcrypt from "bcryptjs"
 import { z } from "zod"
+import { verifyImpersonationToken } from "./lib/services/development"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -41,7 +42,43 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         
         return null;
       }
-    })
+    }),
+    Credentials({
+      id: "impersonate",
+      name: "Impersonate",
+      credentials: {
+        targetUserId: { label: "Target User ID", type: "text" },
+        token: { label: "Token", type: "text" },
+      },
+      async authorize(credentials) {
+        const { targetUserId, token } = (credentials ?? {}) as {
+          targetUserId?: string
+          token?: string
+        }
+        if (process.env.NODE_ENV === "production" && process.env.ALLOW_PRODUCTION_IMPERSONATION !== "true") {
+          return null
+        }
+        if (!targetUserId || !token) return null
+
+        const isValid = await verifyImpersonationToken(targetUserId, token)
+        if (!isValid) return null
+
+        const user = await prisma.user.findUnique({
+          where: { id: targetUserId },
+          include: { role: true },
+        })
+
+        if (!user || !user.isActive) return null
+
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role?.name,
+          theme: user.theme ?? "hell",
+        }
+      },
+    }),
   ],
   callbacks: {
     async jwt({ token, user }) {

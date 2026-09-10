@@ -237,6 +237,9 @@ export async function saveDraftVersion(input: {
   if ((latest.content ?? "") === (input.content ?? "")) {
     throw new Error("Keine Änderung erkannt — es wurde keine neue Version erzeugt.")
   }
+  const { assertCanEditVersion, buildVersionRelations } = await import("./document-helpers")
+  await assertCanEditVersion(input.userId, latest.id)
+
   const doc = await prisma.document.findUnique({
     where: { id: input.documentId },
     select: { ownerId: true, departmentId: true },
@@ -268,6 +271,8 @@ export async function saveDraftVersion(input: {
     assertAssignment(doc?.ownerId ?? input.userId, effReviewerId, effApproverId)
   }
 
+  const relations = await buildVersionRelations(latest.id, latest.id, input.userId)
+
   // Draft → weiterzählen; Released → neue Bearbeitungsrunde (1.0 → 1.1)
   const v = await prisma.documentVersion.create({
     data: {
@@ -282,6 +287,7 @@ export async function saveDraftVersion(input: {
       createdById: input.userId,
       reviewerId: effReviewerId ?? null,
       approverId: effApproverId ?? null,
+      ...relations,
     },
   })
   await logAudit({
@@ -304,10 +310,16 @@ export async function restoreVersion(input: {
   if (!latest || latest.status !== "Draft") {
     throw new Error("Zurückspringen ist nur im Entwurfs-Status möglich.")
   }
+
+  const { assertCanEditVersion, buildVersionRelations } = await import("./document-helpers")
+  await assertCanEditVersion(input.userId, latest.id)
+
   const source = await prisma.documentVersion.findFirst({
     where: { id: input.sourceVersionId, documentId: input.documentId },
   })
   if (!source) throw new Error("Quell-Version nicht gefunden.")
+
+  const relations = await buildVersionRelations(source.id, source.id, input.userId)
 
   const v = await prisma.documentVersion.create({
     data: {
@@ -321,6 +333,7 @@ export async function restoreVersion(input: {
       createdById: input.userId,
       reviewerId: latest.reviewerId,
       approverId: latest.approverId,
+      ...relations,
     },
   })
   await logAudit({

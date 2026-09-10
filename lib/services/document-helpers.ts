@@ -27,6 +27,10 @@ export async function assertCanEditVersion(userId: string, versionId: string) {
   })
   if (!v) throw new Error("Version nicht gefunden.")
 
+  if (v.status !== "Draft") {
+    throw new Error("Bearbeitungen sind nur im Entwurfs-Status (Draft) zulässig.")
+  }
+
   if (user?.role?.name === "ADMIN") return true
   
   if (
@@ -36,6 +40,17 @@ export async function assertCanEditVersion(userId: string, versionId: string) {
     v.document.ownerId === userId
   ) {
     return true
+  }
+
+  if (v.document.departmentId) {
+    const hasRole = await prisma.departmentRoleAssignment.findFirst({
+      where: {
+        departmentId: v.document.departmentId,
+        userId,
+        role: "ERSTELLER",
+      },
+    })
+    if (hasRole) return true
   }
   
   throw new Error("Keine Berechtigung, dieses Dokument zu bearbeiten.")

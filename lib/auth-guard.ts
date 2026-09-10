@@ -13,13 +13,17 @@ export async function requireUser() {
   if (!session?.user) redirect("/")
 
   if (session.user.id) {
-    const exists = await prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { id: true },
+      select: { id: true, isActive: true, role: { select: { name: true } } },
     })
-    // Verwaiste Session (z. B. nach DB-Reset): Cookie über den
-    // Cleanup-Route-Handler entsorgen — sonst Loop Login ↔ Dashboard.
-    if (!exists) redirect("/api/auth/cleanup")
+    // Verwaiste Session (z. B. nach DB-Reset) oder deaktivierter User:
+    // Cookie über den Cleanup-Route-Handler entsorgen — sonst Loop Login ↔ Dashboard.
+    if (!user || !user.isActive) redirect("/api/auth/cleanup")
+
+    if (user.role?.name) {
+      session.user.role = user.role.name
+    }
   }
 
   return session

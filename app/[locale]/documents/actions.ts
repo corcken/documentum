@@ -180,6 +180,7 @@ export async function restoreAction(formData: FormData) {
 
 export async function attachAction(formData: FormData) {
   const session = await requireUser()
+  if (session.user.role === "VIEWER") redirect("/documents")
   const userId = session.user.id!
   const documentId = formData.get("documentId") as string
   const versionId = formData.get("versionId") as string
@@ -196,6 +197,7 @@ export async function attachAction(formData: FormData) {
 
 export async function detachAction(formData: FormData) {
   const session = await requireUser()
+  if (session.user.role === "VIEWER") redirect("/documents")
   const userId = session.user.id!
   const documentId = formData.get("documentId") as string
   const useId = formData.get("useId") as string
@@ -219,6 +221,9 @@ export async function uploadAndAttachAction(
 
   try {
     const session = await requireUser()
+    if (session.user.role === "VIEWER") {
+      return { error: "Leser haben keine Schreibrechte." }
+    }
     const userId = session.user.id!
     const documentId = formData.get("documentId") as string
     const versionId = formData.get("versionId") as string
