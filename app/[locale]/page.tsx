@@ -51,6 +51,11 @@ export default async function LoginPage({
               Ungültige E-Mail oder Passwort.
             </div>
           )}
+          {error === "AccountLocked" && (
+            <div className="mb-4 p-3 text-sm text-red-800 bg-red-100 rounded-md">
+              Ihr Konto wurde wegen zu vieler Fehlversuche für 15 Minuten vorübergehend gesperrt.
+            </div>
+          )}
           <form action={loginAction} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">E-Mail</Label>

@@ -7,13 +7,46 @@ type AuditInput = {
   entityId: string
   before?: unknown
   after?: unknown
+  ipAddress?: string | null
+  userAgent?: string | null
+}
+
+async function getClientMetadata(): Promise<{ ipAddress?: string | null; userAgent?: string | null }> {
+  try {
+    const { headers } = await import("next/headers")
+    const headerList = await headers()
+    const forwarded = headerList.get("x-forwarded-for")
+    const ipAddress = forwarded ? forwarded.split(",")[0].trim() : (headerList.get("x-real-ip") ?? null)
+    const userAgent = headerList.get("user-agent") ?? null
+    return { ipAddress, userAgent }
+  } catch {
+    return { ipAddress: null, userAgent: null }
+  }
 }
 
 /**
  * Zentraler Audit-Eintrag (GMP: append-only, nie ändern/löschen).
- * Jede Schreibaktion der App protokolliert hier wer, wann, was (vorher/nachher).
+ * Jede Schreibaktion der App protokolliert hier wer, wann, was (vorher/nachher) inkl. IP & User-Agent.
  */
-export async function logAudit({ userId, action, entityType, entityId, before, after }: AuditInput) {
+export async function logAudit({
+  userId,
+  action,
+  entityType,
+  entityId,
+  before,
+  after,
+  ipAddress,
+  userAgent,
+}: AuditInput) {
+  let clientIp = ipAddress
+  let clientAgent = userAgent
+
+  if (clientIp === undefined || clientAgent === undefined) {
+    const meta = await getClientMetadata()
+    if (clientIp === undefined) clientIp = meta.ipAddress
+    if (clientAgent === undefined) clientAgent = meta.userAgent
+  }
+
   await prisma.auditLog.create({
     data: {
       userId: userId ?? null,
@@ -22,6 +55,8 @@ export async function logAudit({ userId, action, entityType, entityId, before, a
       entityId,
       before: before === undefined ? undefined : (before as object),
       after: after === undefined ? undefined : (after as object),
+      ipAddress: clientIp ?? null,
+      userAgent: clientAgent ?? null,
     },
   })
 }

@@ -5,6 +5,8 @@ import bcrypt from "bcryptjs"
 import { z } from "zod"
 import { verifyImpersonationToken } from "./lib/services/development"
 
+import { logAudit } from "./lib/services/audit"
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
@@ -25,11 +27,53 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             include: { role: true }
           });
           
-          if (!user || !user.isActive) return null;
+          if (!user) {
+            await logAudit({
+              action: "LOGIN_FAILED_UNKNOWN_USER",
+              entityType: "User",
+              entityId: email,
+              after: { email },
+            })
+            return null;
+          }
+
+          if (!user.isActive) {
+            await logAudit({
+              userId: user.id,
+              action: "LOGIN_FAILED_INACTIVE",
+              entityType: "User",
+              entityId: user.id,
+              after: { email: user.email },
+            })
+            return null;
+          }
+
+          if (user.lockedUntil && user.lockedUntil > new Date()) {
+            await logAudit({
+              userId: user.id,
+              action: "LOGIN_BLOCKED_LOCKED",
+              entityType: "User",
+              entityId: user.id,
+              after: { lockedUntil: user.lockedUntil },
+            })
+            return null;
+          }
           
           const passwordsMatch = await bcrypt.compare(password, user.password);
           
           if (passwordsMatch) {
+            if (user.failedLoginAttempts > 0 || user.lockedUntil) {
+              await prisma.user.update({
+                where: { id: user.id },
+                data: { failedLoginAttempts: 0, lockedUntil: null },
+              })
+            }
+            await logAudit({
+              userId: user.id,
+              action: "LOGIN_SUCCESS",
+              entityType: "User",
+              entityId: user.id,
+            })
             return {
               id: user.id,
               name: user.name,
@@ -37,6 +81,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               role: user.role?.name,
               theme: user.theme ?? "hell",
             };
+          } else {
+            const newAttempts = (user.failedLoginAttempts || 0) + 1;
+            const lockAccount = newAttempts >= 5;
+            const lockedUntil = lockAccount ? new Date(Date.now() + 15 * 60 * 1000) : null;
+
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                failedLoginAttempts: lockAccount ? 0 : newAttempts,
+                lockedUntil,
+              },
+            })
+
+            await logAudit({
+              userId: user.id,
+              action: lockAccount ? "ACCOUNT_LOCKED" : "LOGIN_FAILED",
+              entityType: "User",
+              entityId: user.id,
+              after: { attempts: newAttempts, locked: lockAccount, lockedUntil },
+            })
           }
         }
         

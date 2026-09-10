@@ -81,7 +81,10 @@ export default async function AuditLogPage({
                       {new Date(log.createdAt).toLocaleString("de-DE")}
                     </TableCell>
                     <TableCell className="text-sm">
-                      {log.user?.name ?? log.user?.email ?? "System"}
+                      <div>{log.user?.name ?? log.user?.email ?? "System"}</div>
+                      {log.ipAddress && (
+                        <div className="font-mono text-xs text-gray-400">IP: {log.ipAddress}</div>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">{log.action}</Badge>

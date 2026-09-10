@@ -107,6 +107,8 @@ model User {
   isActive Boolean @default(true)
   isExternal Boolean @default(false)
   theme      String  @default("hell")
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
 
   roleId       String?
   role         Role?       @relation(fields: [roleId], references: [id])
@@ -274,6 +276,8 @@ model AuditLog {
   entityId   String
   before     Json? // Zustand vor der Änderung
   after      Json? // Zustand nach der Änderung
+  ipAddress  String?
+  userAgent  String?
   createdAt  DateTime @default(now())
 
   @@index([entityType, entityId])

@@ -6,11 +6,33 @@ import { redirect } from "next/navigation"
 import { requireUserId } from "@/lib/auth-guard"
 import { changeOwnPassword } from "@/lib/services/user"
 
+import { prisma } from "@/lib/prisma"
+
 export async function loginAction(formData: FormData) {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase()
+  if (email) {
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { lockedUntil: true },
+    })
+    if (user?.lockedUntil && user.lockedUntil > new Date()) {
+      redirect("/?error=AccountLocked")
+    }
+  }
+
   try {
     await signIn("credentials", formData, { redirectTo: "/dashboard" })
   } catch (error) {
     if (error instanceof AuthError) {
+      if (email) {
+        const user = await prisma.user.findUnique({
+          where: { email },
+          select: { lockedUntil: true },
+        })
+        if (user?.lockedUntil && user.lockedUntil > new Date()) {
+          redirect("/?error=AccountLocked")
+        }
+      }
       redirect("/?error=CredentialsSignin")
     }
     throw error

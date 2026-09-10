@@ -89,8 +89,28 @@ export async function changeOwnPassword(userId: string, currentPassword: string,
   const user = await prisma.user.findUnique({ where: { id: userId } })
   if (!user) throw new Error("Benutzer nicht gefunden")
 
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    throw new Error("Ihr Konto ist vorübergehend gesperrt. Bitte versuchen Sie es in 15 Minuten erneut.")
+  }
+
   const matches = await bcrypt.compare(currentPassword, user.password)
-  if (!matches) throw new Error("Das aktuelle Passwort ist nicht korrekt.")
+  if (!matches) {
+    const newAttempts = (user.failedLoginAttempts || 0) + 1
+    const lockAccount = newAttempts >= 5
+    const lockedUntil = lockAccount ? new Date(Date.now() + 15 * 60 * 1000) : null
+    await prisma.user.update({
+      where: { id: userId },
+      data: { failedLoginAttempts: lockAccount ? 0 : newAttempts, lockedUntil },
+    })
+    await logAudit({
+      userId,
+      action: lockAccount ? "ACCOUNT_LOCKED" : "PASSWORD_CHANGE_FAILED",
+      entityType: "User",
+      entityId: userId,
+      after: { attempts: newAttempts, locked: lockAccount },
+    })
+    throw new Error(lockAccount ? "Konto wegen zu vieler Fehlversuche für 15 Minuten gesperrt." : "Das aktuelle Passwort ist nicht korrekt.")
+  }
 
   if (newPassword.length < 8) {
     throw new Error("Das neue Passwort muss mindestens 8 Zeichen lang sein.")
@@ -100,7 +120,10 @@ export async function changeOwnPassword(userId: string, currentPassword: string,
   }
 
   const hash = await bcrypt.hash(newPassword, 10)
-  await prisma.user.update({ where: { id: userId }, data: { password: hash } })
+  await prisma.user.update({
+    where: { id: userId },
+    data: { password: hash, failedLoginAttempts: 0, lockedUntil: null },
+  })
 
   await logAudit({
     userId,
@@ -120,8 +143,28 @@ export async function changeOwnEmail(userId: string, currentPassword: string, ne
   const user = await prisma.user.findUnique({ where: { id: userId } })
   if (!user) throw new Error("Benutzer nicht gefunden")
 
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    throw new Error("Ihr Konto ist vorübergehend gesperrt. Bitte versuchen Sie es in 15 Minuten erneut.")
+  }
+
   const matches = await bcrypt.compare(currentPassword, user.password)
-  if (!matches) throw new Error("Das aktuelle Passwort ist nicht korrekt.")
+  if (!matches) {
+    const newAttempts = (user.failedLoginAttempts || 0) + 1
+    const lockAccount = newAttempts >= 5
+    const lockedUntil = lockAccount ? new Date(Date.now() + 15 * 60 * 1000) : null
+    await prisma.user.update({
+      where: { id: userId },
+      data: { failedLoginAttempts: lockAccount ? 0 : newAttempts, lockedUntil },
+    })
+    await logAudit({
+      userId,
+      action: lockAccount ? "ACCOUNT_LOCKED" : "EMAIL_CHANGE_FAILED",
+      entityType: "User",
+      entityId: userId,
+      after: { attempts: newAttempts, locked: lockAccount },
+    })
+    throw new Error(lockAccount ? "Konto wegen zu vieler Fehlversuche für 15 Minuten gesperrt." : "Das aktuelle Passwort ist nicht korrekt.")
+  }
 
   const trimmedEmail = newEmail.trim().toLowerCase()
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/

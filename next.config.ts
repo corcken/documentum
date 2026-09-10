@@ -21,12 +21,14 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  allowedDevOrigins: [
-    "192.168.2.79",
-    "192.168.*.*",
-    "10.*.*.*",
-    "localhost",
-  ],
+  allowedDevOrigins:
+    process.env.NODE_ENV === "production"
+      ? undefined
+      : [
+          "localhost",
+          "127.0.0.1",
+          ...(process.env.DEV_ORIGINS ? process.env.DEV_ORIGINS.split(",") : ["192.168.2.79"]),
+        ],
   /* Uploads: Konzept erlaubt 10 MB — Server-Actions-Limit muss darüber liegen,
      sonst blockt Next (Default 1 MB) vor der Validierung im Service. */
   experimental: {
