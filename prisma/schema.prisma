@@ -277,13 +277,16 @@ model AuditLog {
   entityId   String
   before     Json? // Zustand vor der Änderung
   after      Json? // Zustand nach der Änderung
-  ipAddress  String?
-  userAgent  String?
-  createdAt  DateTime @default(now())
+  ipAddress    String?
+  userAgent    String?
+  previousHash String? // Hash des unmittelbar vorherigen Eintrags (Chain)
+  recordHash   String? // HMAC-SHA256 über Nutzlast + previousHash
+  createdAt    DateTime @default(now())
 
   @@index([entityType, entityId])
   @@index([userId])
   @@index([createdAt])
+  @@index([recordHash])
 }
 
 // ─────────────────────────────────────────────
