@@ -53,6 +53,15 @@ export async function uploadFile(
   userId: string,
   isGlobal?: boolean
 ) {
+  if (isGlobal) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { role: true },
+    })
+    if (!user || (user.role?.name !== "ADMIN" && user.role?.name !== "EDITOR")) {
+      throw new Error("Nicht autorisiert: Nur Administratoren und Editoren dürfen globale Dokumente hochladen.")
+    }
+  }
   if (file.size > MAX_FILE_SIZE) {
     throw new Error("Datei ist zu groß (Maximal 10 MB).")
   }
@@ -173,11 +182,16 @@ export async function uploadFile(
   return asset
 }
 
-export async function trashFile(assetId: string, userId: string,
-  isGlobal?: boolean) {
-  const asset = await prisma.fileAsset.findUnique({ where: { id: assetId } })
+export async function trashFile(assetId: string, userId: string) {
+  const [asset, user] = await Promise.all([
+    prisma.fileAsset.findUnique({ where: { id: assetId } }),
+    prisma.user.findUnique({ where: { id: userId }, include: { role: true } }),
+  ])
   if (!asset) throw new Error("Datei nicht gefunden.")
-  if (asset.ownerId !== userId) throw new Error("Keine Berechtigung (nur Besitzer können löschen).")
+  const isAdmin = user?.role?.name === "ADMIN"
+  if (asset.ownerId !== userId && !isAdmin) {
+    throw new Error("Keine Berechtigung (nur Besitzer oder Administratoren können löschen).")
+  }
 
   const activeUses = await prisma.fileAssetUse.count({ where: { fileAssetId: assetId } })
   if (activeUses > 0) {
@@ -204,11 +218,16 @@ export async function trashFile(assetId: string, userId: string,
   return trashed
 }
 
-export async function restoreFile(assetId: string, userId: string,
-  isGlobal?: boolean) {
-  const asset = await prisma.fileAsset.findUnique({ where: { id: assetId } })
+export async function restoreFile(assetId: string, userId: string) {
+  const [asset, user] = await Promise.all([
+    prisma.fileAsset.findUnique({ where: { id: assetId } }),
+    prisma.user.findUnique({ where: { id: userId }, include: { role: true } }),
+  ])
   if (!asset) throw new Error("Datei nicht gefunden.")
-  if (asset.ownerId !== userId) throw new Error("Keine Berechtigung.")
+  const isAdmin = user?.role?.name === "ADMIN"
+  if (asset.ownerId !== userId && !isAdmin) {
+    throw new Error("Keine Berechtigung.")
+  }
 
   const restored = await prisma.fileAsset.update({
     where: { id: assetId },

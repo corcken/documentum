@@ -82,10 +82,11 @@ export async function deleteOrgUnit(
   id: string,
   userId: string
 ): Promise<{ ok: boolean; error?: string }> {
-  const [children, users, scopeRefs] = await Promise.all([
+  const [children, users, scopeRefs, docRefs] = await Promise.all([
     prisma.department.count({ where: { parentId: id } }),
     prisma.user.count({ where: { departmentId: id } }),
     prisma.scopeDepartment.count({ where: { departmentId: id } }),
+    prisma.document.count({ where: { departmentId: id } }),
   ])
 
   if (children > 0) {
@@ -93,6 +94,9 @@ export async function deleteOrgUnit(
   }
   if (users > 0) {
     return { ok: false, error: "Der Einheit sind Benutzer zugeordnet — diese zuerst umhängen." }
+  }
+  if (docRefs > 0) {
+    return { ok: false, error: "Der Einheit sind Dokumente als verantwortlicher Bereich zugeordnet — diese zuerst umhängen." }
   }
   if (scopeRefs > 0) {
     return { ok: false, error: "Die Einheit wird in Geltungsbereichen von Dokumenten verwendet." }

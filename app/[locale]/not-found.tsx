@@ -5,11 +5,11 @@ import Link from "next/link"
 export default function NotFoundPage() {
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
-      <FileQuestion className="size-16 text-gray-400 mb-6" />
-      <h1 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+      <FileQuestion className="size-16 text-muted-foreground mb-6" />
+      <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
         Seite nicht gefunden (404)
       </h1>
-      <p className="mt-4 text-lg text-gray-600">
+      <p className="mt-4 text-lg text-muted-foreground">
         Die gesuchte Seite existiert leider nicht oder du hast keine Berechtigung, sie zu sehen.
       </p>
       <div className="mt-8">

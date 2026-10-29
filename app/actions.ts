@@ -1,24 +1,17 @@
 "use server"
 
-import { signIn, signOut } from "@/auth"
+import { auth, signIn, signOut } from "@/auth"
 import { AuthError } from "next-auth"
 import { redirect } from "next/navigation"
 import { requireUserId } from "@/lib/auth-guard"
 import { changeOwnPassword } from "@/lib/services/user"
+import { logAudit } from "@/lib/services/audit"
 
 import { prisma } from "@/lib/prisma"
 
 export async function loginAction(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase()
-  if (email) {
-    const user = await prisma.user.findUnique({
-      where: { email },
-      select: { lockedUntil: true },
-    })
-    if (user?.lockedUntil && user.lockedUntil > new Date()) {
-      redirect("/?error=AccountLocked")
-    }
-  }
+  formData.set("email", email)
 
   try {
     await signIn("credentials", formData, { redirectTo: "/dashboard" })
@@ -40,6 +33,15 @@ export async function loginAction(formData: FormData) {
 }
 
 export async function logoutAction() {
+  const session = await auth()
+  if (session?.user?.id) {
+    await logAudit({
+      userId: session.user.id,
+      action: "LOGOUT",
+      entityType: "User",
+      entityId: session.user.id,
+    })
+  }
   await signOut({ redirectTo: "/" })
 }
 

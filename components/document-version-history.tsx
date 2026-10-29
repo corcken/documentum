@@ -3,9 +3,9 @@ import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DOCUMENT_STATUS_LABELS, DOCUMENT_STATUS_STYLES } from "@/lib/constants"
 import { formatVersion } from "@/lib/version"
 import { restoreAction } from "@/app/[locale]/documents/actions"
+import { StatusBadge } from "@/components/status-badge"
 import { UserAvatar } from "@/components/user-avatar"
 
 interface VersionHistoryProps {
@@ -49,12 +49,12 @@ export function DocumentVersionHistory({
               return (
                 <TableRow key={v.id}>
                   <TableCell>
-                    <div className="font-mono text-sm">
+                    <div className="font-mono">
                       {formatVersion(v.majorVersion, v.minorVersion)}
                     </div>
                     {v.changeReason && (
                       <div
-                        className="mt-1 text-xs text-gray-500 italic max-w-xs truncate"
+                        className="mt-1 text-xs text-muted-foreground italic max-w-xs truncate"
                         title={v.changeReason}
                       >
                         {v.changeReason}
@@ -62,11 +62,9 @@ export function DocumentVersionHistory({
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge className={DOCUMENT_STATUS_STYLES[v.status] ?? ""}>
-                      {DOCUMENT_STATUS_LABELS[v.status] ?? v.status}
-                    </Badge>
+                    <StatusBadge status={v.status} />
                   </TableCell>
-                  <TableCell className="text-sm text-gray-500">
+                  <TableCell className="text-sm text-muted-foreground">
                     {new Date(v.createdAt).toLocaleDateString("de-DE")}
                     {v.nextReviewDate && v.nextReviewDate <= new Date() && (
                       <Badge variant="destructive" className="ml-2">
@@ -74,7 +72,7 @@ export function DocumentVersionHistory({
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-sm text-gray-500">
+                  <TableCell className="text-sm text-muted-foreground">
                     <div className="flex items-center gap-1.5">
                       <UserAvatar
                         name={v.createdBy?.name}

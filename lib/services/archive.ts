@@ -6,14 +6,26 @@ export async function requestDestruction(versionId: string, comment: string, use
   if (!comment || !comment.trim()) throw new Error("Kommentar ist Pflicht.")
   
   const version = await prisma.documentVersion.findUnique({ where: { id: versionId } })
-  if (!version || version.status !== "Archived") throw new Error("Ungültige Version.")
+  if (!version || (version.status !== "Archived" && version.status !== "Withdrawn")) {
+    throw new Error("Nur archivierte oder zurückgezogene Versionen können vernichtet werden.")
+  }
+
+  const existingPending = await prisma.destructionRequest.findFirst({
+    where: {
+      documentVersionId: version.id,
+      status: { in: ["PENDING", "Pending"] },
+    },
+  })
+  if (existingPending) {
+    throw new Error("Für diese Version liegt bereits eine offene Vernichtungsanforderung vor.")
+  }
 
   await prisma.destructionRequest.create({
     data: {
       documentVersionId: version.id,
       requestedById: userId,
       status: "PENDING",
-      comment
+      comment: comment.trim(),
     }
   })
 

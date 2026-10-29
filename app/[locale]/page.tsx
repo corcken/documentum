@@ -15,14 +15,14 @@ export default async function LoginPage({
   const session = await auth()
 
   if (session?.user) {
-    const userExists = session.user.id
+    const activeUser = session.user.id
       ? await prisma.user.findUnique({
           where: { id: session.user.id },
-          select: { id: true },
+          select: { id: true, isActive: true },
         })
       : null
 
-    if (userExists) {
+    if (activeUser && activeUser.isActive) {
       // Gültige Session: weiter zum Dashboard.
       redirect("/dashboard")
     }
@@ -35,6 +35,7 @@ export default async function LoginPage({
   }
 
   const { error } = await searchParams;
+  const showDemoHint = process.env.NODE_ENV !== "production"
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background text-foreground p-4">
@@ -47,12 +48,12 @@ export default async function LoginPage({
         </CardHeader>
         <CardContent>
           {error === "CredentialsSignin" && (
-            <div className="mb-4 p-3 text-sm text-red-800 bg-red-100 rounded-md">
+            <div className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
               Ungültige E-Mail oder Passwort.
             </div>
           )}
           {error === "AccountLocked" && (
-            <div className="mb-4 p-3 text-sm text-red-800 bg-red-100 rounded-md">
+            <div className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
               Ihr Konto wurde wegen zu vieler Fehlversuche für 15 Minuten vorübergehend gesperrt.
             </div>
           )}
@@ -82,10 +83,12 @@ export default async function LoginPage({
             </Button>
           </form>
           
-          <div className="mt-6 text-center text-sm text-gray-500">
-            <p>Demo Admin: admin@example.com</p>
-            <p>Passwort: password123</p>
-          </div>
+          {showDemoHint && (
+            <div className="mt-6 text-center text-sm text-muted-foreground">
+              <p>Demo Admin: admin@example.com</p>
+              <p>Passwort: password123</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

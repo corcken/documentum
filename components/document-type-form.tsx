@@ -18,9 +18,9 @@ export function DocumentTypeForm({
   )
 
   return (
-    <form action={formAction} className="space-y-4 rounded-lg border bg-white p-4">
+    <form action={formAction} className="space-y-4 rounded-lg border border-border bg-card p-4">
       {state?.error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">{state.error}</div>
+        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</div>
       )}
       {isEdit && <input type="hidden" name="id" value={docType!.id} />}
 
@@ -35,7 +35,7 @@ export function DocumentTypeForm({
           id="requiresTraining"
           name="requiresTraining"
           defaultChecked={docType?.requiresTraining ?? false}
-          className="size-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          className="size-4 rounded border-input accent-primary focus:ring-ring"
         />
         <Label htmlFor="requiresTraining" className="font-normal">
           Erfordert Schulung (Training)
@@ -48,7 +48,7 @@ export function DocumentTypeForm({
           id="defaultVisibility"
           name="defaultVisibility"
           defaultValue={docType?.defaultVisibility ?? "PUBLIC"}
-          className="block h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          className="block h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
         >
           <option value="PUBLIC">Betriebsöffentlich (PUBLIC)</option>
           <option value="SCOPED">Geltungsbereich (SCOPED)</option>

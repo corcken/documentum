@@ -12,59 +12,63 @@ export async function AppHeader() {
   const canManageOrg = isAdmin || isLead
   const openTasks = session?.user?.id ? await countMyOpenTasks(session.user.id) : 0
   const avatar = session?.user?.id ? await getUserAvatar(session.user.id) : null
+  const showDevTools =
+    process.env.NODE_ENV !== "production" || process.env.ALLOW_PRODUCTION_IMPERSONATION === "true"
 
   return (
     <header className="flex items-center justify-between border-b bg-card text-card-foreground px-6 py-4 shadow-xs">
       <div className="flex items-center gap-8">
-        <div className="text-xl font-bold text-blue-600">Documentum</div>
+        <div className="text-xl font-bold text-primary">Documentum</div>
         <nav className="flex items-center gap-4">
-          <Link href="/dashboard" className="text-sm text-gray-600 hover:text-gray-900">
+          <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
             Dashboard
           </Link>
-          <Link href="/documents" className="text-sm text-gray-600 hover:text-gray-900">
+          <Link href="/documents" className="text-sm text-muted-foreground hover:text-foreground">
             Dokumente
           </Link>
           {session?.user?.role !== "VIEWER" && (
-            <Link href="/documents/prueffaellig" className="text-sm text-gray-600 hover:text-gray-900">
+            <Link href="/documents/prueffaellig" className="text-sm text-muted-foreground hover:text-foreground">
               Prüffällig
             </Link>
           )}
-          <Link href="/aufgaben" className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900">
+          <Link href="/aufgaben" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
             Aufgaben
             {openTasks > 0 && (
-              <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+              <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">
                 {openTasks}
               </span>
             )}
           </Link>
-          <Link href="/mediathek" className="text-sm text-gray-600 hover:text-gray-900">
+          <Link href="/mediathek" className="text-sm text-muted-foreground hover:text-foreground">
             Mediathek
           </Link>
           {canManageOrg && (
-            <Link href="/admin/org" className="text-sm text-gray-600 hover:text-gray-900">
+            <Link href="/admin/org" className="text-sm text-muted-foreground hover:text-foreground">
               Organisation
             </Link>
           )}
           {isAdmin && (
             <>
-              <Link href="/admin/benutzer" className="text-sm text-gray-600 hover:text-gray-900">
+              <Link href="/admin/benutzer" className="text-sm text-muted-foreground hover:text-foreground">
                 Benutzer
               </Link>
-              <Link href="/admin/archiv" className="text-sm text-gray-600 hover:text-gray-900">
+              <Link href="/admin/archiv" className="text-sm text-muted-foreground hover:text-foreground">
                 Archiv & Vernichtung
               </Link>
-              <Link href="/admin/email" className="text-sm text-gray-600 hover:text-gray-900">
+              <Link href="/admin/email" className="text-sm text-muted-foreground hover:text-foreground">
                 E-Mail & Vorlagen
               </Link>
-              <Link href="/admin/einstellungen" className="text-sm text-gray-600 hover:text-gray-900">
+              <Link href="/admin/einstellungen" className="text-sm text-muted-foreground hover:text-foreground">
                 Einstellungen
               </Link>
-              <Link
-                href="/admin/entwicklung"
-                className="text-sm font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400"
-              >
-                Entwicklung
-              </Link>
+              {showDevTools && (
+                <Link
+                  href="/admin/entwicklung"
+                  className="text-sm font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400"
+                >
+                  Entwicklung
+                </Link>
+              )}
             </>
           )}
         </nav>

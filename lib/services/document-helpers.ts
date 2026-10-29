@@ -1,5 +1,81 @@
 import { getDepartmentAncestors } from "./org"
 import { prisma } from "@/lib/prisma"
+import { logAudit } from "./audit"
+import bcrypt from "bcryptjs"
+
+export async function verifyElectronicSignature({
+  userId,
+  versionId,
+  password,
+  signatureMeaning,
+}: {
+  userId: string
+  versionId: string
+  password?: string
+  signatureMeaning?: string
+}) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { role: true },
+  })
+  if (!user || !user.isActive) {
+    throw new Error("Benutzer nicht gefunden oder inaktiv.")
+  }
+
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    throw new Error("Ihr Konto ist vorübergehend gesperrt. Bitte versuchen Sie es in 15 Minuten erneut.")
+  }
+
+  const requiresPasswordCheck = password !== undefined || user.password.startsWith("$2")
+  if (requiresPasswordCheck) {
+    if (!password) {
+      throw new Error(
+        "Zur rechtsgültigen Freigabe (FDA 21 CFR Part 11) ist die Eingabe Ihres Passworts als elektronische Signatur erforderlich."
+      )
+    }
+
+    const matches = await bcrypt.compare(password, user.password)
+    if (!matches) {
+      const newAttempts = (user.failedLoginAttempts || 0) + 1
+      const lockAccount = newAttempts >= 5
+      const lockedUntil = lockAccount ? new Date(Date.now() + 15 * 60 * 1000) : null
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { failedLoginAttempts: lockAccount ? 0 : newAttempts, lockedUntil },
+      })
+      await logAudit({
+        userId: user.id,
+        action: lockAccount ? "ACCOUNT_LOCKED" : "SIGNATURE_VERIFICATION_FAILED",
+        entityType: "DocumentVersion",
+        entityId: versionId,
+        after: { attempts: newAttempts, locked: lockAccount },
+      })
+      throw new Error(
+        lockAccount
+          ? "Konto wegen zu vieler Fehlversuche für 15 Minuten gesperrt."
+          : "Das eingegebene Passwort zur elektronischen Signatur ist nicht korrekt."
+      )
+    }
+
+    if (user.failedLoginAttempts > 0 || user.lockedUntil) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { failedLoginAttempts: 0, lockedUntil: null },
+      })
+    }
+  }
+
+  return {
+    signerId: user.id,
+    signerName: user.name ?? user.email,
+    signerEmail: user.email,
+    role: user.role?.name ?? "FREIGEBER",
+    meaning:
+      signatureMeaning ||
+      "Ich habe das Dokument geprüft und gebe es hiermit gemäß QM-Vorgaben frei.",
+    timestamp: new Date().toISOString(),
+  }
+}
 
 /** Prüft die Zuweisung: Prüfer und Genehmiger müssen gesetzt, verschieden und nicht der Ersteller sein. */
 export function assertAssignment(ownerId: string, reviewerId: string | undefined, approverId: string | undefined) {
@@ -14,12 +90,13 @@ export function assertAssignment(ownerId: string, reviewerId: string | undefined
   }
 }
 
-export async function assertCanEditVersion(userId: string, versionId: string) {
+export async function assertCanEditVersion(userId: string, versionId: string, allowReleased = false) {
   const user = await prisma.user.findUnique({ 
     where: { id: userId },
     include: { role: true }
   })
-  if (user?.role?.name === "VIEWER") throw new Error("Leser haben keine Schreibrechte.")
+  if (!user || !user.isActive) throw new Error("Benutzer nicht gefunden oder inaktiv.")
+  if (user.role?.name === "VIEWER") throw new Error("Leser haben keine Schreibrechte.")
 
   const v = await prisma.documentVersion.findUnique({ 
     where: { id: versionId },
@@ -27,7 +104,11 @@ export async function assertCanEditVersion(userId: string, versionId: string) {
   })
   if (!v) throw new Error("Version nicht gefunden.")
 
-  if (v.status !== "Draft") {
+  if (allowReleased) {
+    if (v.status !== "Draft" && v.status !== "Released") {
+      throw new Error("Bearbeitungen sind nur im Entwurfs-Status (Draft) oder als neue Revision einer freigegebenen Version zulässig.")
+    }
+  } else if (v.status !== "Draft") {
     throw new Error("Bearbeitungen sind nur im Entwurfs-Status (Draft) zulässig.")
   }
 
@@ -85,14 +166,15 @@ export async function canReadVersion(userId: string, versionId: string): Promise
     where: { id: userId },
     include: { role: true }
   })
-  if (!user) return false
+  if (!user || !user.isActive) return false
 
   const v = await prisma.documentVersion.findUnique({
     where: { id: versionId },
     include: { 
       document: true,
       scopeDepartments: true,
-      scopeJobRoles: true
+      scopeJobRoles: true,
+      workflowTasks: { select: { assignedToId: true } },
     }
   })
   if (!v) return false
@@ -105,14 +187,26 @@ export async function canReadVersion(userId: string, versionId: string): Promise
   // 1. ADMIN → immer
   if (user.role?.name === "ADMIN") return true
 
-  // 2. Beteiligte → immer
+  // 2. Beteiligte (inkl. zugewiesener WorkflowTasks & Bereichsrollen) → immer
   if (
     v.createdById === userId ||
     v.reviewerId === userId ||
     v.approverId === userId ||
-    v.document.ownerId === userId
+    v.document.ownerId === userId ||
+    v.workflowTasks.some((t) => t.assignedToId === userId)
   ) {
     return true
+  }
+
+  if (v.document.departmentId && !user.isExternal) {
+    const deptRole = await prisma.departmentRoleAssignment.findFirst({
+      where: {
+        departmentId: v.document.departmentId,
+        userId,
+      },
+      select: { id: true },
+    })
+    if (deptRole) return true
   }
 
   // 6. Withdrawn → für alle internen aktiven Benutzer (auch VIEWER) sichtbar (Q25)
@@ -157,4 +251,26 @@ export function calculateNextDate(months: number | null): Date | null {
   const d = new Date()
   d.setMonth(d.getMonth() + months)
   return d
+}
+
+export async function getVersionLifecycleTimestamps(
+  versionId: string,
+  createdAt: Date
+): Promise<Record<string, Date>> {
+  const timestamps: Record<string, Date> = {}
+  const logs = await prisma.auditLog.findMany({
+    where: { entityId: versionId, entityType: "DocumentVersion" },
+    orderBy: { createdAt: "asc" },
+  })
+  for (const log of logs) {
+    if (log.action === "SAVE_DRAFT" && !timestamps["Draft"]) timestamps["Draft"] = log.createdAt
+    if (log.action === "SUBMIT_FOR_REVIEW" && !timestamps["In_Review"]) timestamps["In_Review"] = log.createdAt
+    if ((log.action === "APPROVE_REVIEW" || log.action === "TRANSITION_TO_APPROVAL") && !timestamps["In_Approval"]) {
+      timestamps["In_Approval"] = log.createdAt
+    }
+    if (log.action === "APPROVE" && !timestamps["Released"]) timestamps["Released"] = log.createdAt
+    if (log.action === "WITHDRAW_DOCUMENT" && !timestamps["Withdrawn"]) timestamps["Withdrawn"] = log.createdAt
+  }
+  if (!timestamps["Draft"]) timestamps["Draft"] = createdAt
+  return timestamps
 }

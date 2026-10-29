@@ -34,7 +34,7 @@ export function EmailTemplateManager({ templates }: { templates: Template[] }) {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Event-Auswahlliste */}
       <div className="space-y-2">
-        <Label className="text-sm font-semibold text-gray-700">Workflow-Events</Label>
+        <Label className="text-sm font-semibold text-foreground">Workflow-Events</Label>
         <div className="space-y-1">
           {templates.map((t) => {
             const isActive = t.event === activeEvent
@@ -45,12 +45,12 @@ export function EmailTemplateManager({ templates }: { templates: Template[] }) {
                 onClick={() => setActiveEvent(t.event)}
                 className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center justify-between border ${
                   isActive
-                    ? "bg-blue-50 border-blue-200 text-blue-800 font-medium shadow-sm"
-                    : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                    ? "bg-primary/10 border-primary/30 text-primary font-medium shadow-sm"
+                    : "bg-card border-border text-foreground hover:bg-muted/50"
                 }`}
               >
                 <div className="flex items-center gap-2 truncate">
-                  <Mail className={`size-4 ${isActive ? "text-blue-600" : "text-gray-400"}`} />
+                  <Mail className={`size-4 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
                   <span className="truncate">{t.name}</span>
                 </div>
               </button>
@@ -82,16 +82,16 @@ function TemplateEditor({ template }: { template: Template }) {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-base">{template.name}</CardTitle>
-            <CardDescription className="font-mono text-xs text-gray-500">
+            <CardDescription className="font-mono text-xs text-muted-foreground">
               Event: {template.event}
             </CardDescription>
           </div>
-          <div className="flex items-center gap-1 border rounded-lg p-0.5 bg-gray-50">
+          <div className="flex items-center gap-1 border border-border rounded-lg p-0.5 bg-muted">
             <button
               type="button"
               onClick={() => setViewMode("edit")}
               className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                viewMode === "edit" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                viewMode === "edit" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               Bearbeiten
@@ -100,7 +100,7 @@ function TemplateEditor({ template }: { template: Template }) {
               type="button"
               onClick={() => setViewMode("preview")}
               className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                viewMode === "preview" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                viewMode === "preview" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               HTML Vorschau
@@ -110,29 +110,29 @@ function TemplateEditor({ template }: { template: Template }) {
       </CardHeader>
       <CardContent className="space-y-4">
         {state?.ok && (
-          <div className="rounded-md bg-green-50 p-3 text-sm text-green-800 flex items-center gap-2">
+          <div className="flex items-center gap-2 rounded-md border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-400">
             <CheckCircle2 className="size-4" /> {state.ok}
           </div>
         )}
         {state?.error && (
-          <div className="rounded-md bg-red-50 p-3 text-sm text-red-800 flex items-center gap-2">
+          <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
             <AlertCircle className="size-4" /> {state.error}
           </div>
         )}
 
-        <div className="rounded-md bg-gray-50 p-2.5 border text-xs text-gray-600 flex items-start gap-2">
-          <Info className="size-4 text-blue-500 flex-shrink-0 mt-0.5" />
+        <div className="flex items-start gap-2 rounded-md border border-border bg-muted p-2.5 text-xs text-muted-foreground">
+          <Info className="size-4 text-primary flex-shrink-0 mt-0.5" />
           <div>
-            <span className="font-medium text-gray-800">Verfügbare Platzhalter: </span>
-            <span className="font-mono text-blue-700">{placeholders.join("  ")}</span>
+            <span className="font-medium text-foreground">Verfügbare Platzhalter: </span>
+            <span className="font-mono text-primary">{placeholders.join("  ")}</span>
           </div>
         </div>
 
         {viewMode === "preview" ? (
           <div className="space-y-3">
-            <div className="text-xs text-gray-500 font-medium">Betreff: {subject}</div>
+            <div className="text-xs text-muted-foreground font-medium">Betreff: {subject}</div>
             <div
-              className="rounded-lg border p-4 bg-white text-sm prose prose-sm max-w-none min-h-[220px]"
+              className="rounded-lg border border-border p-4 bg-background text-sm prose prose-sm max-w-none min-h-[220px]"
               dangerouslySetInnerHTML={{ __html: bodyHtml }}
             />
           </div>
@@ -153,8 +153,8 @@ function TemplateEditor({ template }: { template: Template }) {
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center gap-1.5 text-xs text-gray-700 font-medium">
-                <Code className="size-3.5 text-blue-600" />
+              <div className="flex items-center gap-1.5 text-xs text-foreground font-medium">
+                <Code className="size-3.5 text-primary" />
                 <Label htmlFor="bodyHtml">HTML-Inhalt</Label>
               </div>
               <textarea
@@ -163,14 +163,14 @@ function TemplateEditor({ template }: { template: Template }) {
                 rows={8}
                 value={bodyHtml}
                 onChange={(e) => setBodyHtml(e.target.value)}
-                className="w-full rounded-lg border border-input bg-white p-3 font-mono text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-input bg-background p-3 font-mono text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center gap-1.5 text-xs text-gray-700 font-medium">
-                <FileText className="size-3.5 text-gray-600" />
+              <div className="flex items-center gap-1.5 text-xs text-foreground font-medium">
+                <FileText className="size-3.5 text-muted-foreground" />
                 <Label htmlFor="bodyText">Plaintext-Inhalt (Fallback für reine Text-Clients)</Label>
               </div>
               <textarea
@@ -179,7 +179,7 @@ function TemplateEditor({ template }: { template: Template }) {
                 rows={6}
                 value={bodyText}
                 onChange={(e) => setBodyText(e.target.value)}
-                className="w-full rounded-lg border border-input bg-white p-3 font-mono text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-input bg-background p-3 font-mono text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
                 required
               />
             </div>

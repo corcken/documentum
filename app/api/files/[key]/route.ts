@@ -12,6 +12,14 @@ export async function GET(
     return new NextResponse("Unauthorized", { status: 401 })
   }
 
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true, isActive: true, role: { select: { name: true } } },
+  })
+  if (!dbUser || !dbUser.isActive) {
+    return new NextResponse("Unauthorized", { status: 401 })
+  }
+
   const { key } = await params
 
   const asset = await prisma.fileAsset.findUnique({
@@ -29,13 +37,13 @@ export async function GET(
     }
   })
 
-  if (!asset || asset.trashedAt) {
+  if (!asset || asset.trashedAt || asset.destroyedAt) {
     return new NextResponse("Not Found", { status: 404 })
   }
 
   // Permission check
-  const userId = session.user.id
-  const userRole = session.user.role!
+  const userId = dbUser.id
+  const userRole = dbUser.role?.name ?? "VIEWER"
   let authorized = false
 
   // Wenn es eine Variante ist, prüfen wir die Berechtigung über das Original (parent)
@@ -53,7 +61,7 @@ export async function GET(
         }
       }
     })
-    if (!parent || parent.trashedAt) {
+    if (!parent || parent.trashedAt || parent.destroyedAt) {
       return new NextResponse("Not Found", { status: 404 })
     }
     targetAsset = parent

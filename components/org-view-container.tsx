@@ -69,7 +69,7 @@ export function OrgViewContainer({
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-all cursor-pointer",
                 viewMode === "list"
-                  ? "bg-white text-foreground shadow-xs dark:bg-card"
+                  ? "bg-card text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -84,7 +84,7 @@ export function OrgViewContainer({
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-all cursor-pointer",
                 viewMode === "graph"
-                  ? "bg-white text-foreground shadow-xs dark:bg-card"
+                  ? "bg-card text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >

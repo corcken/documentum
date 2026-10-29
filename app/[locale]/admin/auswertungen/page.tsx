@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/auth-guard"
 import { getQmStats } from "@/lib/services/stats"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ActivityLineChart, StatusPieChart, TaskBarChart, TypeBarChart } from "@/components/charts"
+import { PageHeader } from "@/components/page-header"
 import { DOCUMENT_STATUS_LABELS } from "@/lib/constants"
 
 export default async function QmStatsPage() {
@@ -16,7 +17,7 @@ export default async function QmStatsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">QM-Auswertungen</h1>
+      <PageHeader title="QM-Auswertungen" />
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
@@ -27,9 +28,9 @@ export default async function QmStatsPage() {
             {statusDataTranslated.length > 0 ? (
               <StatusPieChart data={statusDataTranslated} />
             ) : (
-              <div className="flex h-[300px] items-center justify-center text-sm text-gray-500">
-                Keine Daten
-              </div>
+                <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">
+                  Keine Daten
+                </div>
             )}
           </CardContent>
         </Card>
@@ -42,9 +43,9 @@ export default async function QmStatsPage() {
             {stats.typeData.length > 0 ? (
               <TypeBarChart data={stats.typeData} />
             ) : (
-              <div className="flex h-[300px] items-center justify-center text-sm text-gray-500">
-                Keine Daten
-              </div>
+                <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">
+                  Keine Daten
+                </div>
             )}
           </CardContent>
         </Card>
@@ -57,7 +58,7 @@ export default async function QmStatsPage() {
             {stats.taskData.length > 0 ? (
               <TaskBarChart data={stats.taskData} />
             ) : (
-              <div className="flex h-[300px] items-center justify-center text-sm text-gray-500">
+              <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">
                 Alle Aufgaben erledigt
               </div>
             )}
@@ -72,7 +73,7 @@ export default async function QmStatsPage() {
             {stats.auditData.length > 0 ? (
               <ActivityLineChart data={stats.auditData} />
             ) : (
-              <div className="flex h-[300px] items-center justify-center text-sm text-gray-500">
+              <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">
                 Keine Aktivität
               </div>
             )}

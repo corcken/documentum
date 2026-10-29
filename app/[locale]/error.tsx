@@ -17,11 +17,11 @@ export default function ErrorPage({
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
-      <AlertCircle className="size-16 text-red-500 mb-6" />
-      <h1 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+      <AlertCircle className="size-16 text-destructive mb-6" />
+      <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
         Ein unerwarteter Fehler ist aufgetreten
       </h1>
-      <p className="mt-4 text-lg text-gray-600">
+      <p className="mt-4 text-lg text-muted-foreground">
         Wir konnten deine Anfrage leider nicht verarbeiten.
       </p>
       <div className="mt-8 flex gap-4">

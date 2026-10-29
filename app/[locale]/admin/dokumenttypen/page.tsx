@@ -4,6 +4,7 @@ import { DocumentTypeForm } from "@/components/document-type-form"
 import { deleteDocumentTypeAction } from "./actions"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { PageHeader } from "@/components/page-header"
 import { Trash2 } from "lucide-react"
 import Link from "next/link"
 
@@ -26,10 +27,10 @@ export default async function DocumentTypesPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Dokumenttypen</h1>
+      <PageHeader title="Dokumenttypen" />
 
       {sp.error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">{sp.error}</div>
+        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{sp.error}</div>
       )}
 
       <div className="grid gap-6 md:grid-cols-[1fr_350px]">
@@ -39,28 +40,31 @@ export default async function DocumentTypesPage({
           </CardHeader>
           <CardContent>
             {docTypes.length === 0 ? (
-              <p className="text-sm text-gray-500">Keine Dokumenttypen vorhanden.</p>
+              <p className="text-sm text-muted-foreground">Keine Dokumenttypen vorhanden.</p>
             ) : (
               <ul className="divide-y rounded-md border">
                 {docTypes.map((r) => {
                   const isDeletable = r._count.documents === 0
                   return (
-                    <li key={r.id} className="flex items-center justify-between p-3 hover:bg-gray-50">
+                    <li key={r.id} className="flex items-center justify-between p-3 hover:bg-muted/50">
                       <div>
-                        <div className="font-medium text-sm flex items-center gap-2">
+                        <div className="font-medium text-sm flex flex-wrap items-center gap-2">
                           {r.name}
                           {r.requiresTraining && (
                             <Badge variant="outline" className="text-xs">Schulungspflichtig</Badge>
                           )}
+                          <Badge variant={r.defaultVisibility === "SCOPED" ? "secondary" : "outline"} className="text-xs">
+                            {r.defaultVisibility === "SCOPED" ? "Geltungsbereich (SCOPED)" : "Betriebsöffentlich (PUBLIC)"}
+                          </Badge>
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {r._count.documents} Dokumente
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {r._count.documents} Dokumente · Aufbewahrungsfrist: {r.retentionMonths} Monate ({Math.round((r.retentionMonths / 12) * 10) / 10} Jahre)
                         </div>
                       </div>
                       <div className="flex gap-2">
                         <Link
                           href={`?edit=${r.id}`}
-                          className="text-xs text-blue-600 hover:underline"
+                          className="text-xs text-primary hover:underline"
                         >
                           Bearbeiten
                         </Link>
@@ -69,7 +73,7 @@ export default async function DocumentTypesPage({
                             <input type="hidden" name="id" value={r.id} />
                             <button
                               type="submit"
-                              className="text-gray-400 hover:text-red-600"
+                              className="text-muted-foreground hover:text-destructive"
                               title="Löschen"
                             >
                               <Trash2 className="size-4" />
@@ -89,7 +93,7 @@ export default async function DocumentTypesPage({
           <h2 className="text-lg font-semibold">{editUnit ? "Bearbeiten" : "Neu anlegen"}</h2>
           <DocumentTypeForm docType={editUnit || undefined} />
           {editUnit && (
-            <Link href="?" className="text-sm text-blue-600 hover:underline">
+            <Link href="?" className="text-sm text-primary hover:underline">
               Abbrechen / Neue anlegen
             </Link>
           )}

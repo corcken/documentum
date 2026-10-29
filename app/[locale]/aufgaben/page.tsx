@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { PageHeader } from "@/components/page-header"
 import { formatVersion } from "@/lib/version"
 import { ClipboardCheck, Eye } from "lucide-react"
 import { getUserAvatars } from "@/lib/services/avatar"
@@ -23,10 +24,7 @@ export default async function AufgabenPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <ClipboardCheck className="size-6 text-blue-600" />
-        <h1 className="text-2xl font-bold">Meine Aufgaben</h1>
-      </div>
+      <PageHeader title="Meine Aufgaben" icon={ClipboardCheck} />
 
       <Card>
         <CardHeader>
@@ -36,7 +34,7 @@ export default async function AufgabenPage() {
         </CardHeader>
         <CardContent>
           {tasks.length === 0 ? (
-            <p className="py-6 text-center text-sm text-gray-400">
+            <p className="py-6 text-center text-sm text-muted-foreground">
               Keine offenen Aufgaben — alles erledigt. 🎉
             </p>
           ) : (
@@ -61,14 +59,14 @@ export default async function AufgabenPage() {
                           {TASK_LABELS[t.taskType] ?? t.taskType}
                         </Badge>
                       </TableCell>
-                      <TableCell className="font-mono text-sm">
+                      <TableCell className="font-mono">
                         {v.document.documentNumber}
                       </TableCell>
                       <TableCell className="max-w-md truncate">{v.title}</TableCell>
-                      <TableCell className="font-mono text-sm">
+                      <TableCell className="font-mono">
                         {formatVersion(v.majorVersion, v.minorVersion)}
                       </TableCell>
-                      <TableCell className="text-sm text-gray-500">
+                      <TableCell className="text-sm text-muted-foreground">
                         <div className="flex items-center gap-1.5">
                           <UserAvatar
                             name={v.createdBy?.name}

@@ -8,14 +8,16 @@ export const DOCUMENT_STATUS_LABELS: Record<string, string> = {
   Destroyed: "Vernichtet",
 }
 
+// Status-Farbsprache: bewusst theme-unabhängig (GMP, s. docs/styleguide.md §6).
+// Immer mit Dark-Variante und Rand, damit Status in allen Themes gleich gelesen werden.
 export const DOCUMENT_STATUS_STYLES: Record<string, string> = {
-  Draft: "bg-gray-100 text-gray-700",
-  In_Review: "bg-yellow-100 text-yellow-800",
-  In_Approval: "bg-orange-100 text-orange-800",
-  Released: "bg-green-100 text-green-800",
-  Archived: "bg-gray-200 text-gray-500",
-  Withdrawn: "bg-red-100 text-red-800",
-  Destroyed: "bg-gray-100 text-gray-500 line-through",
+  Draft: "border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300",
+  In_Review: "border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300",
+  In_Approval: "border-orange-200 bg-orange-100 text-orange-800 dark:border-orange-900 dark:bg-orange-950/50 dark:text-orange-300",
+  Released: "border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300",
+  Archived: "border-slate-300 bg-slate-200 text-slate-600 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-400",
+  Withdrawn: "border-rose-200 bg-rose-100 text-rose-800 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-300",
+  Destroyed: "border-slate-200 bg-slate-100 text-slate-500 line-through dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-500",
 }
 
 export const DESTRUCTION_REQUEST_STATUS_LABELS: Record<string, string> = {
@@ -27,11 +29,11 @@ export const DESTRUCTION_REQUEST_STATUS_LABELS: Record<string, string> = {
 }
 
 export const DESTRUCTION_REQUEST_STATUS_STYLES: Record<string, string> = {
-  PENDING: "bg-yellow-100 text-yellow-800",
-  Pending: "bg-yellow-100 text-yellow-800",
-  EXECUTED: "bg-gray-100 text-gray-600",
-  Confirmed: "bg-gray-100 text-gray-600",
-  REJECTED: "bg-red-100 text-red-800",
+  PENDING: "border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300",
+  Pending: "border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-300",
+  EXECUTED: "border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400",
+  Confirmed: "border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400",
+  REJECTED: "border-rose-200 bg-rose-100 text-rose-800 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-300",
 }
 
 export const WORKFLOW_TASK_STATUS_LABELS: Record<string, string> = {
@@ -49,7 +51,7 @@ export const DEPARTMENT_ROLES = {
 
 export type DepartmentRole = (typeof DEPARTMENT_ROLES)[keyof typeof DEPARTMENT_ROLES]
 
-export const DEPARTMENT_ROLE_LABELS: Record<DepartmentRole, string> = {
+export const DEPARTMENT_ROLE_LABELS: Record<string, string> = {
   [DEPARTMENT_ROLES.ERSTELLER]: "Ersteller",
   [DEPARTMENT_ROLES.PRUEFER]: "Prüfer",
   [DEPARTMENT_ROLES.FREIGEBER]: "Freigeber",

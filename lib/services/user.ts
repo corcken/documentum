@@ -21,11 +21,15 @@ export type UserInput = {
 }
 
 export async function createUser(input: UserInput, actorId: string) {
-  const hash = await bcrypt.hash(input.password ?? "", 10)
+  const email = input.email.trim().toLowerCase()
+  if (!input.password || input.password.length < 8) {
+    throw new Error("Das Passwort muss mindestens 8 Zeichen lang sein.")
+  }
+  const hash = await bcrypt.hash(input.password, 10)
   const user = await prisma.user.create({
     data: {
-      name: input.name ?? null,
-      email: input.email,
+      name: input.name?.trim() || null,
+      email,
       password: hash,
       roleId: input.roleId ?? null,
       departmentId: input.orgUnitId ?? null,
@@ -38,15 +42,57 @@ export async function createUser(input: UserInput, actorId: string) {
     action: "CREATE",
     entityType: "User",
     entityId: user.id,
-    after: { email: user.email, name: user.name },
+    after: {
+      email: user.email,
+      name: user.name,
+      roleId: user.roleId,
+      departmentId: user.departmentId,
+      jobRoleId: user.jobRoleId,
+      isExternal: user.isExternal,
+      isActive: user.isActive,
+    },
   })
   notifyUserCreated(user)
   return user
 }
 
 export async function updateUser(id: string, input: UserInput, actorId: string) {
-  const before = await prisma.user.findUnique({ where: { id } })
+  const before = await prisma.user.findUnique({
+    where: { id },
+    include: { role: true },
+  })
   if (!before) throw new Error("Benutzer nicht gefunden")
+
+  if (input.isActive === false && id === actorId) {
+    throw new Error("Sie können Ihr eigenes Administratorenkonto nicht deaktivieren.")
+  }
+
+  const nextRoleId = input.roleId !== undefined ? input.roleId : before.roleId
+  const roleChanged = nextRoleId !== before.roleId
+
+  if (before.role?.name === "ADMIN") {
+    if (roleChanged && id === actorId) {
+      throw new Error("Sie können sich nicht selbst die Administrator-Rolle entziehen.")
+    }
+    if (input.isActive === false || roleChanged) {
+      const remainingAdmins = await prisma.user.count({
+        where: {
+          isActive: true,
+          role: { name: "ADMIN" },
+          id: { not: id },
+        },
+      })
+      if (remainingAdmins === 0) {
+        throw new Error("Es muss mindestens ein aktiver Administrator im System verbleiben.")
+      }
+    }
+  }
+
+  if (input.password && input.password.length < 8) {
+    throw new Error("Neues Passwort muss mindestens 8 Zeichen lang sein.")
+  }
+
+  const email = input.email.trim().toLowerCase()
 
   const data: {
     name?: string | null
@@ -56,17 +102,23 @@ export async function updateUser(id: string, input: UserInput, actorId: string) 
     departmentId?: string | null
     jobRoleId?: string | null
     isActive?: boolean
-  isExternal?: boolean
+    isExternal?: boolean
+    failedLoginAttempts?: number
+    lockedUntil?: Date | null
   } = {
-    name: input.name ?? null,
-    email: input.email,
-    roleId: input.roleId ?? null,
-    departmentId: input.orgUnitId ?? null,
-    jobRoleId: input.jobRoleId ?? null,
-      isExternal: input.isExternal ?? false,
+    name: input.name !== undefined ? (input.name?.trim() || null) : before.name,
+    email,
+    roleId: nextRoleId ?? null,
+    departmentId: input.orgUnitId !== undefined ? (input.orgUnitId ?? null) : before.departmentId,
+    jobRoleId: input.jobRoleId !== undefined ? (input.jobRoleId ?? null) : before.jobRoleId,
+    isExternal: input.isExternal !== undefined ? input.isExternal : before.isExternal,
   }
   if (input.isActive !== undefined) data.isActive = input.isActive
-  if (input.password) data.password = await bcrypt.hash(input.password, 10)
+  if (input.password) {
+    data.password = await bcrypt.hash(input.password, 10)
+    data.failedLoginAttempts = 0
+    data.lockedUntil = null
+  }
 
   const user = await prisma.user.update({ where: { id }, data })
 
@@ -75,8 +127,51 @@ export async function updateUser(id: string, input: UserInput, actorId: string) 
     action: "UPDATE",
     entityType: "User",
     entityId: id,
-    before: { email: before.email, isActive: before.isActive },
-    after: { email: user.email, isActive: user.isActive, passwordChanged: Boolean(input.password) },
+    before: {
+      name: before.name,
+      email: before.email,
+      roleId: before.roleId,
+      departmentId: before.departmentId,
+      jobRoleId: before.jobRoleId,
+      isActive: before.isActive,
+      isExternal: before.isExternal,
+    },
+    after: {
+      name: user.name,
+      email: user.email,
+      roleId: user.roleId,
+      departmentId: user.departmentId,
+      jobRoleId: user.jobRoleId,
+      isActive: user.isActive,
+      isExternal: user.isExternal,
+      passwordChanged: Boolean(input.password),
+    },
+  })
+  return user
+}
+
+export async function unlockUser(id: string, actorId: string) {
+  const before = await prisma.user.findUnique({ where: { id } })
+  if (!before) throw new Error("Benutzer nicht gefunden")
+
+  const user = await prisma.user.update({
+    where: { id },
+    data: { failedLoginAttempts: 0, lockedUntil: null },
+  })
+
+  await logAudit({
+    userId: actorId,
+    action: "UNLOCK_ACCOUNT",
+    entityType: "User",
+    entityId: id,
+    before: {
+      failedLoginAttempts: before.failedLoginAttempts,
+      lockedUntil: before.lockedUntil,
+    },
+    after: {
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+    },
   })
   return user
 }

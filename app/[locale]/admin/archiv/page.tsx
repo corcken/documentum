@@ -1,51 +1,101 @@
+import Link from "next/link"
 import { requireAdmin } from "@/lib/auth-guard"
 import { prisma } from "@/lib/prisma"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { StatusBadge } from "@/components/status-badge"
+import { PageHeader } from "@/components/page-header"
+import { DESTRUCTION_REQUEST_STATUS_STYLES } from "@/lib/constants"
 import { formatVersion } from "@/lib/version"
 import { Trash2 } from "lucide-react"
 import { requestDestructionAction, confirmDestructionAction, rejectDestructionAction } from "./actions"
 import { Button } from "@/components/ui/button"
 
-export default async function ArchivPage() {
+export default async function ArchivPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string; error?: string }>
+}) {
   const session = await requireAdmin()
-  
-  // Alle archivierten Versionen, deren Aufbewahrungsfrist abgelaufen ist ODER die bereits vernichtet sind
+  const sp = await searchParams
+  const tab = sp.tab === "retention" ? "retention" : "due"
+  const now = new Date()
+
+  const whereClause =
+    tab === "retention"
+      ? {
+          status: { in: ["Archived" as const, "Withdrawn" as const] },
+          OR: [{ retentionEndDate: { gt: now } }, { retentionEndDate: null }],
+        }
+      : {
+          OR: [
+            {
+              status: { in: ["Archived" as const, "Withdrawn" as const] },
+              retentionEndDate: { lte: now },
+            },
+            { status: "Destroyed" as const },
+            {
+              status: { in: ["Archived" as const, "Withdrawn" as const] },
+              destructionRequests: { some: { status: { in: ["PENDING", "Pending"] } } },
+            },
+          ],
+        }
+
   const versions = await prisma.documentVersion.findMany({
-    where: {
-      OR: [
-        { status: "Archived", retentionEndDate: { lte: new Date() } },
-        { status: "Destroyed" },
-        { status: "Archived", destructionRequests: { some: { status: { in: ["PENDING", "Pending"] } } } }
-      ]
-    },
+    where: whereClause,
     include: {
       document: true,
       destructionRequests: {
         orderBy: { createdAt: "desc" },
         take: 1,
-        include: { requestedBy: { select: { name: true, email: true } } }
-      }
+        include: { requestedBy: { select: { name: true, email: true } } },
+      },
     },
-    orderBy: { obsoleteDate: "desc" }
+    orderBy: { obsoleteDate: "desc" },
   })
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Trash2 className="size-6 text-gray-700" />
-          Archiv & Vernichtung
-        </h1>
-      </div>
+      <PageHeader
+        title="Archiv & Vernichtung"
+        icon={Trash2}
+        actions={
+          <div className="flex items-center gap-2">
+            <Link
+              href="?tab=due"
+              className={`rounded-md px-3 py-1.5 text-sm ${
+                tab === "due"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/70"
+              }`}
+            >
+              Vernichtung fällig & Vernichtet
+            </Link>
+            <Link
+              href="?tab=retention"
+              className={`rounded-md px-3 py-1.5 text-sm ${
+                tab === "retention"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/70"
+              }`}
+            >
+              Laufende Aufbewahrungsfrist
+            </Link>
+          </div>
+        }
+      />
 
-      <div className="rounded-lg border bg-white">
+      {sp.error && (
+        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{sp.error}</div>
+      )}
+
+      <div className="rounded-lg border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Dokument</TableHead>
               <TableHead>Version</TableHead>
-              <TableHead>Ersetzt am</TableHead>
+              <TableHead>Ersetzt / Zurückgezogen am</TableHead>
               <TableHead>Frist-Ende</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Aktion</TableHead>
@@ -54,8 +104,10 @@ export default async function ArchivPage() {
           <TableBody>
             {versions.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-gray-400">
-                  Keine Dokumente zur Vernichtung anstehend.
+                <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                  {tab === "retention"
+                    ? "Keine archivierten Fassungen mit laufender Aufbewahrungsfrist."
+                    : "Keine Dokumente zur Vernichtung anstehend."}
                 </TableCell>
               </TableRow>
             )}
@@ -63,46 +115,73 @@ export default async function ArchivPage() {
               const req = v.destructionRequests[0]
               const isPending = req?.status === "PENDING" || req?.status === "Pending"
               const canConfirm = isPending && req.requestedById !== session.user.id
+              const isRetentionExpired = Boolean(v.retentionEndDate && v.retentionEndDate <= now)
+              const canRequestDestruction =
+                (v.status === "Archived" || v.status === "Withdrawn") &&
+                !isPending &&
+                isRetentionExpired
 
               return (
                 <TableRow key={v.id}>
                   <TableCell className="font-medium">
-                    <div className="font-mono text-sm text-gray-500">{v.document.documentNumber}</div>
-                    {v.title}
+                    <div className="font-mono text-muted-foreground">{v.document.documentNumber}</div>
+                    <Link href={`/documents/${v.documentId}`} className="hover:underline">
+                      {v.title}
+                    </Link>
                   </TableCell>
                   <TableCell>v{formatVersion(v.majorVersion, v.minorVersion)}</TableCell>
-                  <TableCell>{v.obsoleteDate ? new Date(v.obsoleteDate).toLocaleDateString("de-DE") : "—"}</TableCell>
+                  <TableCell>
+                    {v.obsoleteDate ? new Date(v.obsoleteDate).toLocaleDateString("de-DE") : "—"}
+                  </TableCell>
                   <TableCell>
                     {v.retentionEndDate ? (
-                      <span className={v.retentionEndDate <= new Date() ? "text-red-600 font-medium" : ""}>
+                      <span className={isRetentionExpired ? "text-destructive font-medium" : ""}>
                         {new Date(v.retentionEndDate).toLocaleDateString("de-DE")}
                       </span>
-                    ) : "—"}
-                  </TableCell>
-                  <TableCell>
-                    {v.status === "Destroyed" ? (
-                      <Badge variant="outline" className="bg-gray-100 text-gray-600">Vernichtet</Badge>
-                    ) : isPending ? (
-                      <Badge className="bg-yellow-100 text-yellow-800">4-Augen-Freigabe</Badge>
-                    ) : req?.status === "REJECTED" ? (
-                      <Badge variant="outline" className="bg-red-100 text-red-800">Antrag abgelehnt</Badge>
                     ) : (
-                      <Badge variant="destructive">Vernichtung fällig</Badge>
+                      "—"
                     )}
                   </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <StatusBadge status={v.status} />
+                      {v.status !== "Destroyed" && (
+                        <>
+                          {isPending ? (
+                            <Badge variant="outline" className={DESTRUCTION_REQUEST_STATUS_STYLES.Pending}>
+                              4-Augen-Freigabe
+                            </Badge>
+                          ) : req?.status === "REJECTED" ? (
+                            <Badge variant="outline" className={DESTRUCTION_REQUEST_STATUS_STYLES.REJECTED}>
+                              Antrag abgelehnt
+                            </Badge>
+                          ) : isRetentionExpired ? (
+                            <Badge variant="destructive">Vernichtung fällig</Badge>
+                          ) : null}
+                        </>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right">
-                    {v.status === "Archived" && !isPending && (
+                    {canRequestDestruction && (
                       <form action={requestDestructionAction} className="flex flex-col gap-2 items-end">
                         <input type="hidden" name="versionId" value={v.id} />
-                        <textarea name="comment" required placeholder="Begründung (Pflicht)" className="w-full text-xs p-1 border rounded" />
+                        <textarea
+                          name="comment"
+                          required
+                          placeholder="Begründung (Pflicht)"
+                          className="w-full max-w-xs rounded-md border border-border bg-background p-1 text-xs"
+                        />
                         <Button type="submit" variant="destructive" size="sm">
                           Vernichtung anfordern
                         </Button>
                       </form>
                     )}
-                    {v.status === "Archived" && isPending && (
+                    {(v.status === "Archived" || v.status === "Withdrawn") && isPending && (
                       <div className="flex flex-col items-end gap-1.5">
-                        <span className="text-xs text-gray-500">Angefordert von {req.requestedBy?.name || req.requestedBy?.email}</span>
+                        <span className="text-xs text-muted-foreground">
+                          Angefordert von {req.requestedBy?.name || req.requestedBy?.email}
+                        </span>
                         {canConfirm ? (
                           <div className="flex flex-col items-end gap-1.5">
                             <form action={confirmDestructionAction}>
@@ -118,22 +197,27 @@ export default async function ArchivPage() {
                                 name="comment"
                                 required
                                 placeholder="Grund für Ablehnung (Pflicht)"
-                                className="text-xs p-1 border rounded w-44"
+                                className="w-44 rounded-md border border-border bg-background p-1 text-xs"
                               />
                               <Button
                                 type="submit"
                                 variant="outline"
                                 size="sm"
-                                className="text-xs text-red-600 border-red-200 hover:bg-red-50"
+                                className="border-destructive/30 text-xs text-destructive hover:bg-destructive/10"
                               >
                                 Ablehnen
                               </Button>
                             </form>
                           </div>
                         ) : (
-                          <span className="text-xs font-medium text-amber-700">Wartet auf 2. Person</span>
+                          <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                            Wartet auf 2. Person
+                          </span>
                         )}
                       </div>
+                    )}
+                    {!canRequestDestruction && !isPending && v.status !== "Destroyed" && (
+                      <span className="text-xs text-muted-foreground">Aufbewahrung läuft</span>
                     )}
                   </TableCell>
                 </TableRow>

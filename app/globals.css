@@ -59,6 +59,8 @@
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0); --sidebar-foreground: oklch(0.145 0 0); --sidebar-primary: oklch(0.205 0 0); --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.97 0 0); --sidebar-accent-foreground: oklch(0.205 0 0); --sidebar-border: oklch(0.922 0 0); --sidebar-ring: oklch(0.708 0 0);
+  /* Datendichte der Tabellen (theme-steuerbar, s. docs/styleguide.md §7) */
+  --table-head-h: 2.25rem; --table-row-h: 2rem; --table-cell-x: 0.75rem; --table-cell-y: 0.5rem; --table-font: 0.8125rem;
 }
 
 /* ── Theme 2: Dunkel ── */
@@ -111,6 +113,8 @@
   --radius: 0.25rem;
   --sidebar: oklch(0.985 0 0); --sidebar-foreground: oklch(0.145 0 0); --sidebar-primary: oklch(0.205 0 0); --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.97 0 0); --sidebar-accent-foreground: oklch(0.205 0 0); --sidebar-border: oklch(0.922 0 0); --sidebar-ring: oklch(0.708 0 0);
+  /* Kompakt: noch dichtere Zeilen (24px-Standard des Industrie-Looks) */
+  --table-head-h: 1.75rem; --table-row-h: 1.5rem; --table-cell-x: 0.5rem; --table-cell-y: 0.25rem; --table-font: 0.75rem;
 }
 
 /* ── Theme 6: Entspannt Grün ── */
@@ -163,6 +167,21 @@
   --radius: 0.375rem;
   --sidebar: #00293C; --sidebar-foreground: #F1F3CE; --sidebar-primary: #F62A00; --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: #1E656D; --sidebar-accent-foreground: #FFFFFF; --sidebar-border: #1E656D; --sidebar-ring: #F62A00;
+}
+
+/* ── Theme 10: Dokumentum (Daten) — ruhiger, datendichter Industrie-Look (s. docs/styleguide.md) ── */
+:root[data-theme="dokumentum"], [data-theme="dokumentum"] {
+  --background: #FFFFFF; --foreground: #0F172A;
+  --card: #FFFFFF; --card-foreground: #0F172A; --popover: #FFFFFF; --popover-foreground: #0F172A;
+  --primary: #2563EB; --primary-foreground: #FFFFFF; --secondary: #F1F5F9; --secondary-foreground: #0F172A;
+  --muted: #F8FAFC; --muted-foreground: #64748B; --accent: #F1F5F9; --accent-foreground: #0F172A;
+  --destructive: #DC2626; --destructive-foreground: #FFFFFF; --border: #E2E8F0; --input: #E2E8F0; --ring: #2563EB;
+  --chart-1: #2563EB; --chart-2: #0D9488; --chart-3: #D97706; --chart-4: #7C3AED; --chart-5: #E11D48;
+  --radius: 0.25rem;
+  --sidebar: #F8FAFC; --sidebar-foreground: #0F172A; --sidebar-primary: #2563EB; --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F1F5F9; --sidebar-accent-foreground: #0F172A; --sidebar-border: #E2E8F0; --sidebar-ring: #2563EB;
+  /* Datendichte: Standard-Dichte, kleinere Rundungen */
+  --table-head-h: 2rem; --table-row-h: 1.75rem; --table-cell-x: 0.625rem; --table-cell-y: 0.25rem; --table-font: 0.8125rem;
 }
 
 /* ── Theme-spezifische Overrides & Skalierung ── */

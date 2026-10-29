@@ -2,8 +2,8 @@ import { requireAdmin } from "@/lib/auth-guard"
 import { prisma } from "@/lib/prisma"
 import { JobRoleForm } from "@/components/job-role-form"
 import { deleteJobRoleAction } from "./actions"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PageHeader } from "@/components/page-header"
 import { Trash2 } from "lucide-react"
 import Link from "next/link"
 
@@ -26,10 +26,10 @@ export default async function JobrollenPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Job-Rollen</h1>
+      <PageHeader title="Job-Rollen" />
 
       {sp.error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">{sp.error}</div>
+        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{sp.error}</div>
       )}
 
       <div className="grid gap-6 md:grid-cols-[1fr_350px]">
@@ -39,23 +39,23 @@ export default async function JobrollenPage({
           </CardHeader>
           <CardContent>
             {roles.length === 0 ? (
-              <p className="text-sm text-gray-500">Keine Job-Rollen vorhanden.</p>
+              <p className="text-sm text-muted-foreground">Keine Job-Rollen vorhanden.</p>
             ) : (
               <ul className="divide-y rounded-md border">
                 {roles.map((r) => {
                   const isDeletable = r._count.users === 0 && r._count.scopedDocuments === 0
                   return (
-                    <li key={r.id} className="flex items-center justify-between p-3 hover:bg-gray-50">
+                    <li key={r.id} className="flex items-center justify-between p-3 hover:bg-muted/50">
                       <div>
                         <div className="font-medium text-sm">{r.name}</div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-muted-foreground">
                           {r.description || "Keine Beschreibung"} · {r._count.users} Benutzer · {r._count.scopedDocuments} Dokumenten-Geltungsbereiche
                         </div>
                       </div>
                       <div className="flex gap-2">
                         <Link
                           href={`?edit=${r.id}`}
-                          className="text-xs text-blue-600 hover:underline"
+                          className="text-xs text-primary hover:underline"
                         >
                           Bearbeiten
                         </Link>
@@ -64,7 +64,7 @@ export default async function JobrollenPage({
                             <input type="hidden" name="id" value={r.id} />
                             <button
                               type="submit"
-                              className="text-gray-400 hover:text-red-600"
+                              className="text-muted-foreground hover:text-destructive"
                               title="Löschen"
                             >
                               <Trash2 className="size-4" />
@@ -84,7 +84,7 @@ export default async function JobrollenPage({
           <h2 className="text-lg font-semibold">{editUnit ? "Bearbeiten" : "Neu anlegen"}</h2>
           <JobRoleForm role={editUnit || undefined} />
           {editUnit && (
-            <Link href="?" className="text-sm text-blue-600 hover:underline">
+            <Link href="?" className="text-sm text-primary hover:underline">
               Abbrechen / Neue anlegen
             </Link>
           )}

@@ -15,7 +15,15 @@ import {
   Legend
 } from "recharts"
 
-const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#64748b"]
+// Farben aus dem Theme-Tokensystem (docs/styleguide.md §14) — folgt jedem data-theme
+const COLORS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--muted-foreground)",
+]
 
 export function StatusPieChart({ data }: { data: { name: string; value: number }[] }) {
   return (
@@ -40,7 +48,7 @@ export function TypeBarChart({ data }: { data: { name: string; value: number }[]
         <XAxis type="number" allowDecimals={false} />
         <YAxis dataKey="name" type="category" width={100} />
         <Tooltip />
-        <Bar dataKey="value" fill="#3b82f6" />
+        <Bar dataKey="value" fill="var(--chart-1)" />
       </BarChart>
     </ResponsiveContainer>
   )
@@ -53,7 +61,7 @@ export function TaskBarChart({ data }: { data: { name: string; value: number }[]
         <XAxis dataKey="name" />
         <YAxis allowDecimals={false} />
         <Tooltip />
-        <Bar dataKey="value" fill="#f59e0b" />
+        <Bar dataKey="value" fill="var(--chart-3)" />
       </BarChart>
     </ResponsiveContainer>
   )
@@ -66,7 +74,7 @@ export function ActivityLineChart({ data }: { data: { date: string; count: numbe
         <XAxis dataKey="date" />
         <YAxis allowDecimals={false} />
         <Tooltip />
-        <Line type="monotone" dataKey="count" stroke="#10b981" strokeWidth={2} />
+        <Line type="monotone" dataKey="count" stroke="var(--chart-2)" strokeWidth={2} />
       </LineChart>
     </ResponsiveContainer>
   )

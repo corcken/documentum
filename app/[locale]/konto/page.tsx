@@ -5,7 +5,10 @@ import { AvatarCropper } from "@/components/avatar-cropper"
 import { EmailChangeForm } from "@/components/email-change-form"
 import { PasswordChangeForm } from "@/components/password-change-form"
 import { ThemeSelector } from "@/components/theme-selector"
+import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { PageHeader } from "@/components/page-header"
+import { DEPARTMENT_ROLE_LABELS } from "@/lib/constants"
 import { UserRound } from "lucide-react"
 
 export default async function KontoPage() {
@@ -13,17 +16,20 @@ export default async function KontoPage() {
   const userId = session.user.id!
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    include: { role: true, department: true, jobRole: true },
+    include: {
+      role: true,
+      department: true,
+      jobRole: true,
+      departmentLeads: { include: { department: true } },
+      departmentRoleAssignments: { include: { department: true } },
+    },
   })
 
   const avatar = await getUserAvatar(userId)
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div className="flex items-center gap-3">
-        <UserRound className="size-6 text-blue-600" />
-        <h1 className="text-2xl font-bold">Mein Konto</h1>
-      </div>
+      <PageHeader title="Mein Konto" icon={UserRound} />
 
       <Card>
         <CardHeader>
@@ -43,24 +49,61 @@ export default async function KontoPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Profil</CardTitle>
-          <CardDescription>Deine hinterlegten Daten</CardDescription>
+          <CardTitle className="text-base">Profil & Berechtigungen</CardTitle>
+          <CardDescription>Deine hinterlegten Stammdaten und Workflow-Rollen</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-2 text-sm sm:grid-cols-2">
-          <div>
-            Name: <span className="font-medium">{user?.name ?? "—"}</span>
+        <CardContent className="space-y-4 text-sm">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div>
+              Name: <span className="font-medium">{user?.name ?? "—"}</span>
+            </div>
+            <div>
+              E-Mail: <span className="font-medium">{user?.email}</span>
+            </div>
+            <div>
+              System-Rolle: <span className="font-medium">{user?.role?.name ?? "—"}</span>
+            </div>
+            <div>
+              Kontotyp:{" "}
+              <span className="font-medium">
+                {user?.isExternal ? "Externer Benutzer" : "Interner Benutzer"}
+              </span>
+            </div>
+            <div>
+              Organisationseinheit: <span className="font-medium">{user?.department?.name ?? "—"}</span>
+            </div>
+            <div>
+              Job-Rolle: <span className="font-medium">{user?.jobRole?.name ?? "—"}</span>
+            </div>
           </div>
-          <div>
-            E-Mail: <span className="font-medium">{user?.email}</span>
-          </div>
-          <div>
-            Rolle: <span className="font-medium">{user?.role?.name ?? "—"}</span>
-          </div>
-          <div>
-            Abteilung: <span className="font-medium">{user?.department?.name ?? "—"}</span>
-          </div>
-          <div>
-            Job-Rolle: <span className="font-medium">{user?.jobRole?.name ?? "—"}</span>
+
+          <div className="border-t border-border pt-3 space-y-2">
+            <div className="text-xs font-medium text-muted-foreground">
+              Bereichsleitungen & Workflow-Rollen
+            </div>
+            {user &&
+            (user.departmentLeads.length > 0 || user.departmentRoleAssignments.length > 0) ? (
+              <div className="flex flex-wrap gap-1.5">
+                {user.departmentLeads.map((l) => (
+                  <Badge
+                    key={`lead-${l.departmentId}`}
+                    variant="outline"
+                    className="border-primary/40 bg-primary/5 text-primary"
+                  >
+                    Bereichsleiter: {l.department.name}
+                  </Badge>
+                ))}
+                {user.departmentRoleAssignments.map((ra) => (
+                  <Badge key={ra.id} variant="secondary">
+                    {DEPARTMENT_ROLE_LABELS[ra.role] ?? ra.role} ({ra.department.name})
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Keine spezifischen Bereichsrollen zugewiesen.
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

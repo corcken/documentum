@@ -19,12 +19,12 @@ export default function GlobalError({
   return (
     <html lang="de">
       <body>
-        <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 text-center">
-          <ShieldAlert className="size-16 text-red-500 mb-6" />
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+        <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground px-4 text-center">
+          <ShieldAlert className="size-16 text-destructive mb-6" />
+          <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
             Ein unerwarteter Fehler ist aufgetreten
           </h1>
-          <p className="mt-4 text-lg text-gray-600">
+          <p className="mt-4 text-lg text-muted-foreground">
             Leider ist bei der Verarbeitung deiner Anfrage etwas schiefgelaufen. 
             Bitte versuche es erneut oder wende dich an den Administrator.
           </p>

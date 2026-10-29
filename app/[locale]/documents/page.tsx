@@ -5,8 +5,10 @@ import { prisma } from "@/lib/prisma"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DOCUMENT_STATUS_LABELS, DOCUMENT_STATUS_STYLES } from "@/lib/constants"
+import { DOCUMENT_STATUS_LABELS } from "@/lib/constants"
 import { formatVersion } from "@/lib/version"
+import { PageHeader } from "@/components/page-header"
+import { StatusBadge } from "@/components/status-badge"
 import { Plus, Search } from "lucide-react"
 
 export default async function DocumentsPage({
@@ -27,29 +29,31 @@ export default async function DocumentsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Dokumente</h1>
-        {!isViewer && (
-          <Link href="/documents/neu" className={buttonVariants({ size: "default" })}>
-            <Plus className="size-4" /> Neues Dokument
-          </Link>
-        )}
-      </div>
+      <PageHeader
+        title="Dokumente"
+        actions={
+          !isViewer ? (
+            <Link href="/documents/neu" className={buttonVariants()}>
+              <Plus className="size-4" /> Neues Dokument
+            </Link>
+          ) : undefined
+        }
+      />
 
       <form method="get" className="flex flex-wrap items-center gap-2">
         <div className="relative">
-          <Search className="absolute top-2.5 left-2.5 size-4 text-gray-400" />
+          <Search className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
           <input
             name="q"
             defaultValue={sp.q}
             placeholder="Suchen…"
-            className="h-9 w-56 rounded-lg border border-input bg-white pr-3 pl-8 text-sm"
+            className="h-9 w-56 rounded-lg border border-input bg-background pr-3 pl-8 text-sm"
           />
         </div>
         <select
           name="type"
           defaultValue={sp.type ?? ""}
-          className="h-9 rounded-lg border border-input bg-white px-3 text-sm"
+          className="h-9 rounded-lg border border-input bg-background px-3 text-sm"
         >
           <option value="">Alle Typen</option>
           {types.map((t) => (
@@ -62,7 +66,7 @@ export default async function DocumentsPage({
           <select
             name="status"
             defaultValue={sp.status ?? ""}
-            className="h-9 rounded-lg border border-input bg-white px-3 text-sm"
+            className="h-9 rounded-lg border border-input bg-background px-3 text-sm"
           >
             <option value="">Alle Status</option>
             {Object.entries(DOCUMENT_STATUS_LABELS).map(([v, l]) => (
@@ -77,7 +81,7 @@ export default async function DocumentsPage({
         </button>
       </form>
 
-      <div className="rounded-lg border bg-white">
+      <div className="rounded-lg border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -93,7 +97,7 @@ export default async function DocumentsPage({
           <TableBody>
             {documents.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="py-8 text-center text-gray-400">
+                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                   Keine Dokumente gefunden.
                 </TableCell>
               </TableRow>
@@ -102,11 +106,11 @@ export default async function DocumentsPage({
               const v = d.currentVersion
               return (
                 <TableRow key={d.id}>
-                  <TableCell className="font-mono text-sm">
+                  <TableCell className="font-mono">
                     <div className="flex items-center gap-1.5">
                       <span>{d.documentNumber}</span>
                       {d.isTemplate && (
-                        <Badge variant="outline" className="text-[10px] px-1 py-0 border-blue-300 bg-blue-50 text-blue-800">
+                        <Badge variant="outline" className="border-primary/30 bg-primary/10 px-1 py-0 text-[10px] text-primary">
                           Vorlage
                         </Badge>
                       )}
@@ -118,13 +122,9 @@ export default async function DocumentsPage({
                     {v ? formatVersion(v.majorVersion, v.minorVersion) : "—"}
                   </TableCell>
                   <TableCell>
-                    {v && (
-                      <Badge className={DOCUMENT_STATUS_STYLES[v.status] ?? ""}>
-                        {DOCUMENT_STATUS_LABELS[v.status] ?? v.status}
-                      </Badge>
-                    )}
+                    {v && <StatusBadge status={v.status} />}
                   </TableCell>
-                  <TableCell className="text-sm text-gray-500">
+                  <TableCell className="text-sm text-muted-foreground">
                     {v?.effectiveDate ? new Date(v.effectiveDate).toLocaleDateString("de-DE") : "—"}
                   </TableCell>
                   <TableCell className="text-right">

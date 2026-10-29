@@ -4,8 +4,10 @@ import { assertCanEditVersion } from "./document-helpers"
 
 export async function attachFileToVersion(assetId: string, versionId: string, userId: string) {
   const asset = await prisma.fileAsset.findUnique({ where: { id: assetId } })
-  if (!asset) throw new Error("Datei nicht gefunden.")
-  if (asset.ownerId !== userId) throw new Error("Nur eigene Dateien können angehängt werden.")
+  if (!asset || asset.trashedAt || asset.destroyedAt) throw new Error("Datei nicht gefunden.")
+  if (asset.ownerId !== userId && !asset.isGlobal) {
+    throw new Error("Nur eigene oder globale Dateien können angehängt werden.")
+  }
 
   const version = await prisma.documentVersion.findUnique({ where: { id: versionId } })
   if (!version) throw new Error("Version nicht gefunden.")

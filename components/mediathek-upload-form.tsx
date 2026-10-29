@@ -33,7 +33,7 @@ export function MediathekUploadForm({ isGlobal }: { isGlobal?: boolean }) {
         </Button>
       </form>
       {state?.error && (
-        <div className="text-xs text-red-600 flex items-center gap-1">
+        <div className="text-xs text-destructive flex items-center gap-1">
           <AlertCircle className="size-3.5 flex-shrink-0" />
           <span>{state.error}</span>
         </div>

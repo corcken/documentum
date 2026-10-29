@@ -3,6 +3,7 @@
 import { requireUser } from "@/lib/auth-guard"
 import { uploadFile, trashFile, restoreFile } from "@/lib/services/file"
 import { revalidatePath } from "next/cache"
+import { redirect } from "next/navigation"
 
 export type UploadActionState = { error?: string; ok?: string } | null
 
@@ -38,19 +39,29 @@ export async function uploadAction(
 }
 
 export async function trashAction(formData: FormData) {
-  const session = await import("@/lib/auth-guard").then(m => m.requireUser())
+  const session = await requireUser()
   const userId = session.user.id!
-  const assetId = formData.get("assetId") as string
+  const assetId = String(formData.get("assetId") ?? "")
 
-  await trashFile(assetId, userId)
-  revalidatePath("/mediathek")
+  try {
+    await trashFile(assetId, userId)
+    revalidatePath("/mediathek")
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Löschen fehlgeschlagen."
+    redirect(`/mediathek?error=${encodeURIComponent(msg)}`)
+  }
 }
 
 export async function restoreAction(formData: FormData) {
-  const session = await import("@/lib/auth-guard").then(m => m.requireUser())
+  const session = await requireUser()
   const userId = session.user.id!
-  const assetId = formData.get("assetId") as string
+  const assetId = String(formData.get("assetId") ?? "")
 
-  await restoreFile(assetId, userId)
-  revalidatePath("/mediathek")
+  try {
+    await restoreFile(assetId, userId)
+    revalidatePath("/mediathek")
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Wiederherstellen fehlgeschlagen."
+    redirect(`/mediathek?tab=trash&error=${encodeURIComponent(msg)}`)
+  }
 }

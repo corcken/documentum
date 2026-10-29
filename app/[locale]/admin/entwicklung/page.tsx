@@ -77,7 +77,7 @@ export default async function EntwicklungPage({
 
       {/* Fehlermeldungen */}
       {sp.error && (
-        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
           <AlertTriangle className="size-5 shrink-0" />
           <span>
             {sp.error === "missing_user"
@@ -150,7 +150,7 @@ export default async function EntwicklungPage({
                     </div>
                     {isCurrent ? (
                       <Badge variant="outline" className="text-xs">
-                        <CheckCircle2 className="mr-1 size-3 text-green-600" />
+                          <CheckCircle2 className="mr-1 size-3 text-emerald-600 dark:text-emerald-400" />
                         {t("currentActive")}
                       </Badge>
                     ) : (
@@ -257,7 +257,7 @@ export default async function EntwicklungPage({
                                   ? "border-purple-300 text-purple-700 dark:border-purple-800 dark:text-purple-300"
                                   : u.roleName === "EDITOR"
                                     ? "border-blue-300 text-blue-700 dark:border-blue-800 dark:text-blue-300"
-                                    : "border-gray-300 text-gray-700 dark:border-gray-700 dark:text-gray-300"
+                                    : "border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-300"
                               }
                             >
                               {u.roleName}
@@ -285,7 +285,7 @@ export default async function EntwicklungPage({
                         <TableCell className="text-right">
                           {isCurrent ? (
                             <Badge variant="outline" className="text-xs text-muted-foreground">
-                              <UserCheck className="mr-1 size-3 text-green-600" />
+                              <UserCheck className="mr-1 size-3 text-emerald-600 dark:text-emerald-400" />
                               {t("currentActive")}
                             </Badge>
                           ) : (

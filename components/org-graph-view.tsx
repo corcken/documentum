@@ -33,7 +33,7 @@ export function OrgGraphView({ tree, expandedIds, onToggle }: OrgGraphViewProps)
   const canvasHeight = Math.max(totalHeight, 350)
 
   return (
-    <div className="overflow-auto max-h-[720px] rounded-lg border border-border/80 bg-slate-50/50 p-4 shadow-inner">
+    <div className="overflow-auto max-h-[720px] rounded-lg border border-border/80 bg-muted/30 p-4 shadow-inner">
       <div
         className="relative"
         style={{
@@ -56,7 +56,7 @@ export function OrgGraphView({ tree, expandedIds, onToggle }: OrgGraphViewProps)
                 key={edge.id}
                 d={d}
                 fill="none"
-                className="stroke-slate-400 dark:stroke-slate-600"
+                className="stroke-border"
                 strokeWidth="1.5"
               />
             )

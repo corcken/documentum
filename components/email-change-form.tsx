@@ -12,14 +12,14 @@ export function EmailChangeForm({ currentEmail }: { currentEmail: string }) {
   return (
     <form action={formAction} className="max-w-md space-y-4">
       {state?.ok && (
-        <div className="rounded-md bg-green-50 p-3 text-sm text-green-800">{state.ok}</div>
+        <div className="rounded-md border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-400">{state.ok}</div>
       )}
       {state?.error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">{state.error}</div>
+        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</div>
       )}
       <div className="space-y-1">
-        <span className="text-xs text-gray-500">Aktuelle E-Mail:</span>
-        <div className="font-medium text-sm text-gray-900">{currentEmail}</div>
+        <span className="text-xs text-muted-foreground">Aktuelle E-Mail:</span>
+        <div className="font-medium text-sm text-foreground">{currentEmail}</div>
       </div>
       <div className="space-y-2">
         <Label htmlFor="newEmail">Neue E-Mail-Adresse</Label>

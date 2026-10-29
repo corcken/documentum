@@ -10,6 +10,7 @@ import { OrgViewContainer } from "@/components/org-view-container"
 import { DepartmentRoleManager } from "@/components/department-role-manager"
 import { deleteOrgUnitAction } from "./actions"
 import { Button, buttonVariants } from "@/components/ui/button"
+import { PageHeader } from "@/components/page-header"
 import { Plus } from "lucide-react"
 
 export default async function OrgAdminPage({
@@ -88,24 +89,26 @@ export default async function OrgAdminPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{t("title")}</h1>
-        {isAdmin && (
-          <Link href="?action=new" className={buttonVariants()}>
-            <Plus className="size-4" /> {t("newUnit")}
-          </Link>
-        )}
-      </div>
-      <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+      <PageHeader
+        title={t("title")}
+        description={t("subtitle")}
+        actions={
+          isAdmin ? (
+            <Link href="?action=new" className={buttonVariants()}>
+              <Plus className="size-4" /> {t("newUnit")}
+            </Link>
+          ) : undefined
+        }
+      />
 
       {sp.error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/50 dark:text-red-300">
+        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
           {sp.error}
         </div>
       )}
 
       {rolesAccessDenied && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/50 dark:text-red-300">
+        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
           {tRoles("accessDenied")}
         </div>
       )}
@@ -125,8 +128,8 @@ export default async function OrgAdminPage({
       {showForm && <OrgUnitForm unit={editUnit} parentId={sp.parent} units={flat} />}
 
       {deleteUnit && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-950/40">
-          <p className="text-sm text-red-900 dark:text-red-200">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
+          <p className="text-sm text-destructive">
             <strong>{deleteUnit.name}</strong> {t("deleteConfirm")}
           </p>
           <form action={deleteOrgUnitAction} className="mt-3 flex gap-2">

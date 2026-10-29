@@ -1,6 +1,5 @@
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { DOCUMENT_STATUS_STYLES } from "@/lib/constants"
+import { StatusBadge } from "@/components/status-badge"
 import { formatVersion } from "@/lib/version"
 
 interface WithdrawnVersionsArchiveProps {
@@ -33,7 +32,7 @@ export function WithdrawnVersionsArchive({ versions }: WithdrawnVersionsArchiveP
                 <span className="font-semibold">
                   Version {formatVersion(wv.majorVersion, wv.minorVersion)}: {wv.title}
                 </span>
-                <Badge className={DOCUMENT_STATUS_STYLES["Withdrawn"]}>Zurückgezogen</Badge>
+                <StatusBadge status="Withdrawn" />
               </div>
               {wv.changeReason && (
                 <p className="text-xs text-muted-foreground italic">{wv.changeReason}</p>

@@ -4,7 +4,7 @@ import { z } from "zod"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
-import { createUser, updateUser } from "@/lib/services/user"
+import { createUser, updateUser, unlockUser } from "@/lib/services/user"
 import { requireAdminId } from "@/lib/auth-guard"
 
 const NONE = "__none__"
@@ -50,14 +50,20 @@ export async function createUserAction(_prev: UserActionState, formData: FormDat
   if (!parsed.success) {
     return { error: parsed.error.issues.map((i) => i.message).join(" · ") }
   }
-  if (parsed.data.password.length < 6) {
-    return { error: "Passwort muss mindestens 6 Zeichen haben." }
+  if (parsed.data.password.length < 8) {
+    return { error: "Passwort muss mindestens 8 Zeichen haben." }
   }
   try {
     await createUser({ ...toInput(parsed.data), password: parsed.data.password }, actorId)
   } catch (e) {
     console.error("createUserAction:", e)
-    return { error: p2002(e) ? "Diese E-Mail-Adresse ist bereits vergeben." : "Benutzer konnte nicht angelegt werden." }
+    return {
+      error: p2002(e)
+        ? "Diese E-Mail-Adresse ist bereits vergeben."
+        : e instanceof Error
+          ? e.message
+          : "Benutzer konnte nicht angelegt werden.",
+    }
   }
   revalidatePath("/admin/benutzer")
   redirect("/admin/benutzer")
@@ -78,8 +84,8 @@ export async function updateUserAction(_prev: UserActionState, formData: FormDat
   if (!parsed.success) {
     return { error: parsed.error.issues.map((i) => i.message).join(" · ") }
   }
-  if (parsed.data.password && parsed.data.password.length < 6) {
-    return { error: "Neues Passwort muss mindestens 6 Zeichen haben." }
+  if (parsed.data.password && parsed.data.password.length < 8) {
+    return { error: "Neues Passwort muss mindestens 8 Zeichen haben." }
   }
   try {
     await updateUser(
@@ -93,7 +99,13 @@ export async function updateUserAction(_prev: UserActionState, formData: FormDat
     )
   } catch (e) {
     console.error("updateUserAction:", e)
-    return { error: p2002(e) ? "Diese E-Mail-Adresse ist bereits vergeben." : "Speichern fehlgeschlagen." }
+    return {
+      error: p2002(e)
+        ? "Diese E-Mail-Adresse ist bereits vergeben."
+        : e instanceof Error
+          ? e.message
+          : "Speichern fehlgeschlagen.",
+    }
   }
   revalidatePath("/admin/benutzer")
   redirect("/admin/benutzer")
@@ -107,17 +119,39 @@ export async function setUserActiveAction(formData: FormData) {
   const user = await prisma.user.findUnique({ where: { id } })
   if (!user) redirect("/admin/benutzer")
 
-  await updateUser(
-    id,
-    {
-      name: user.name,
-      email: user.email,
-      roleId: user.roleId,
-      orgUnitId: user.departmentId,
-      jobRoleId: user.jobRoleId,
-      isActive: active,
-    },
-    actorId
-  )
+  try {
+    await updateUser(
+      id,
+      {
+        name: user.name,
+        email: user.email,
+        roleId: user.roleId,
+        orgUnitId: user.departmentId,
+        jobRoleId: user.jobRoleId,
+        isExternal: user.isExternal,
+        isActive: active,
+      },
+      actorId
+    )
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Statusänderung fehlgeschlagen."
+    redirect(`/admin/benutzer?error=${encodeURIComponent(msg)}`)
+  }
   revalidatePath("/admin/benutzer")
+  redirect("/admin/benutzer")
+}
+
+export async function unlockUserAction(formData: FormData) {
+  const actorId = await requireAdminId()
+  const id = String(formData.get("id") ?? "")
+  if (!id) redirect("/admin/benutzer")
+
+  try {
+    await unlockUser(id, actorId)
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Entsperren fehlgeschlagen."
+    redirect(`/admin/benutzer?error=${encodeURIComponent(msg)}`)
+  }
+  revalidatePath("/admin/benutzer")
+  redirect("/admin/benutzer")
 }

@@ -19,113 +19,25 @@ import { logAudit } from "./audit"
  * - Review muss vor Approval kommen (Task-Kette), Vier-Augen-Prinzip
  */
 
-export type DocumentFilters = {
-  search?: string
-  typeId?: string
-  status?: string
-}
+export {
+  type DocumentFilters,
+  type ListOptions,
+  getLatestVersion,
+  listDocuments,
+  getDocument,
+} from "./document-queries"
+import { getLatestVersion } from "./document-queries"
+import { assertAssignment, assertCanEditVersion, buildVersionRelations } from "./document-helpers"
 
-export type ListOptions = {
-  /** true = auch Entwürfe (Ersteller/Prüfer/Genehmiger); false = nur freigegeben (Leser) */
-  includeDrafts: boolean
-}
-
-export async function getLatestVersion(documentId: string) {
-  return prisma.documentVersion.findFirst({
-    where: { documentId },
-    include: { document: true },
-    orderBy: [{ majorVersion: "desc" }, { minorVersion: "desc" }],
+async function assertDepartmentCreatorRole(userId: string, departmentId?: string | null, ownerId?: string | null) {
+  if (!departmentId) return
+  const user = await prisma.user.findUnique({ where: { id: userId }, include: { role: true } })
+  if (user?.role?.name === "ADMIN" || (ownerId && ownerId === userId)) return
+  const hasRole = await prisma.departmentRoleAssignment.findFirst({
+    where: { departmentId, userId, role: "ERSTELLER" },
   })
-}
-
-/**
- * Liste aller Dokumente. Für Leser (includeDrafts=false) werden nur Dokumente
- * mit freigegebenem Stand geliefert; Entwürfe bleiben unsichtbar.
- */
-export async function listDocuments(userId: string, filters: DocumentFilters = {}, opts: ListOptions) {
-  const docs = await prisma.document.findMany({
-    where: {
-      ...(filters.typeId ? { typeId: filters.typeId } : {}),
-      ...(!opts.includeDrafts ? { versions: { some: { status: "Released" } } } : {}),
-    },
-    include: {
-      type: true,
-      owner: { select: { id: true, name: true, email: true } },
-      versions: { orderBy: [{ majorVersion: "desc" }, { minorVersion: "desc" }] },
-    },
-    orderBy: { createdAt: "desc" },
-  })
-
-    const filtered = docs
-    .map((d) => {
-      const currentVersion = opts.includeDrafts
-        ? (d.versions.find((v) => v.status === "Released") ?? d.versions[0] ?? null)
-        : (d.versions.find((v) => v.status === "Released") ?? null)
-      return { ...d, currentVersion }
-    })
-    .filter((d) => {
-      if (!d.currentVersion) return false
-      if (filters.search) {
-        const q = filters.search.toLowerCase()
-        const hitNumber = d.documentNumber.toLowerCase().includes(q)
-        const hitTitle = d.currentVersion.title.toLowerCase().includes(q)
-        if (!hitNumber && !hitTitle) return false
-      }
-      if (filters.status && d.currentVersion.status !== filters.status) return false
-      return true
-    })
-
-  const { canReadVersion } = await import("./document-helpers")
-  const results = await Promise.all(
-    filtered.map(async (d) => {
-      const canRead = await canReadVersion(userId, d.currentVersion!.id)
-      return { doc: d, canRead }
-    })
-  )
-  
-  return results.filter(r => r.canRead).map(r => r.doc)
-}
-
-export async function getDocument(id: string) {
-  return prisma.document.findUnique({
-    where: { id },
-    include: {
-      type: true,
-      department: true,
-      owner: { select: { id: true, name: true, email: true } },
-      versions: {
-        include: {
-          createdBy: { select: { id: true, name: true, email: true } },
-          reviewer: { select: { id: true, name: true, email: true } },
-          approver: { select: { id: true, name: true, email: true } },
-          workflowTasks: {
-            orderBy: { createdAt: "asc" },
-            include: { assignedTo: { select: { id: true, name: true, email: true } } },
-          },
-          scopeDepartments: { include: { department: true } },
-          scopeJobRoles: { include: { jobRole: true } },
-          fileAssetUses: {
-            where: { role: "attachment" },
-            include: { fileAsset: true },
-            orderBy: { createdAt: "asc" },
-          },
-        },
-        orderBy: [{ majorVersion: "desc" }, { minorVersion: "desc" }],
-      },
-    },
-  })
-}
-
-/** Prüft die Zuweisung: Prüfer und Genehmiger müssen gesetzt, verschieden und nicht der Ersteller sein. */
-function assertAssignment(ownerId: string, reviewerId: string | undefined, approverId: string | undefined) {
-  if (!reviewerId || !approverId) {
-    throw new Error("Prüfer und Genehmiger müssen ausgewählt werden.")
-  }
-  if (reviewerId === approverId) {
-    throw new Error("Prüfer und Genehmiger müssen verschiedene Personen sein (Vier-Augen-Prinzip).")
-  }
-  if (approverId === ownerId) {
-    throw new Error("Der Ersteller darf nicht selbst freigeben.")
+  if (!hasRole) {
+    throw new Error("Sie besitzen keine Ersteller-Rolle für diesen verantwortlichen Bereich.")
   }
 }
 
@@ -151,25 +63,7 @@ export async function createDocument(input: CreateDocumentInput) {
     departmentIds, jobRoleIds, reviewerId, approverId, reviewIntervalMonths,
   } = input
 
-  if (departmentId) {
-    const user = await prisma.user.findUnique({
-      where: { id: ownerId },
-      include: { role: true },
-    })
-    const isAdmin = user?.role?.name === "ADMIN"
-    if (!isAdmin) {
-      const hasRole = await prisma.departmentRoleAssignment.findFirst({
-        where: {
-          departmentId,
-          userId: ownerId,
-          role: "ERSTELLER",
-        },
-      })
-      if (!hasRole) {
-        throw new Error("Sie besitzen keine Ersteller-Rolle für diesen verantwortlichen Bereich.")
-      }
-    }
-  }
+  await assertDepartmentCreatorRole(ownerId, departmentId)
 
   if (reviewerId && approverId) {
     assertAssignment(ownerId, reviewerId, approverId)
@@ -225,45 +119,53 @@ export async function saveDraftVersion(input: {
   reviewerId?: string | null
   approverId?: string | null
   visibility?: string
-  reviewIntervalMonths?: number
+  reviewIntervalMonths?: number | null
+  departmentIds?: string[]
+  jobRoleIds?: string[]
 }) {
-  const latest = await getLatestVersion(input.documentId)
+  const latest = await prisma.documentVersion.findFirst({
+    where: { documentId: input.documentId },
+    include: {
+      document: true,
+      scopeDepartments: true,
+      scopeJobRoles: true,
+    },
+    orderBy: [{ majorVersion: "desc" }, { minorVersion: "desc" }],
+  })
   if (!latest) throw new Error("Dokument hat keine Version.")
   if (!input.changeReason?.trim()) throw new Error("Änderungsgrund ist Pflicht.")
 
   if (latest.status === "In_Review" || latest.status === "In_Approval") {
     throw new Error("Das Dokument ist im Freeze (zur Prüfung eingereicht) — Änderungen sind nicht möglich.")
   }
-  if ((latest.content ?? "") === (input.content ?? "")) {
+
+  const nextVisibility = input.visibility ?? latest.visibility
+  const nextInterval =
+    input.reviewIntervalMonths !== undefined
+      ? input.reviewIntervalMonths
+      : latest.document.reviewIntervalMonths
+
+  const prevDeptIds = latest.scopeDepartments.map((s) => s.departmentId).sort()
+  const nextDeptIds = input.departmentIds ? [...input.departmentIds].sort() : prevDeptIds
+  const prevRoleIds = latest.scopeJobRoles.map((s) => s.jobRoleId).sort()
+  const nextRoleIds = input.jobRoleIds ? [...input.jobRoleIds].sort() : prevRoleIds
+
+  const contentSame = (latest.content ?? "") === (input.content ?? "")
+  const titleSame = latest.title === input.title
+  const visibilitySame = latest.visibility === nextVisibility
+  const intervalSame = (latest.document.reviewIntervalMonths ?? null) === (nextInterval ?? null)
+  const deptsSame = JSON.stringify(prevDeptIds) === JSON.stringify(nextDeptIds)
+  const rolesSame = JSON.stringify(prevRoleIds) === JSON.stringify(nextRoleIds)
+
+  if (contentSame && titleSame && visibilitySame && intervalSame && deptsSame && rolesSame) {
     throw new Error("Keine Änderung erkannt — es wurde keine neue Version erzeugt.")
   }
-  const { assertCanEditVersion, buildVersionRelations } = await import("./document-helpers")
-  await assertCanEditVersion(input.userId, latest.id)
 
-  const doc = await prisma.document.findUnique({
-    where: { id: input.documentId },
-    select: { ownerId: true, departmentId: true },
-  })
+  await assertCanEditVersion(input.userId, latest.id, true)
 
-  if (doc?.departmentId) {
-    const user = await prisma.user.findUnique({
-      where: { id: input.userId },
-      include: { role: true },
-    })
-    const isAdmin = user?.role?.name === "ADMIN"
-    if (!isAdmin && doc.ownerId !== input.userId) {
-      const hasRole = await prisma.departmentRoleAssignment.findFirst({
-        where: {
-          departmentId: doc.departmentId,
-          userId: input.userId,
-          role: "ERSTELLER",
-        },
-      })
-      if (!hasRole) {
-        throw new Error("Sie besitzen keine Ersteller-Rolle für diesen verantwortlichen Bereich.")
-      }
-    }
-  }
+  const doc = latest.document
+
+  await assertDepartmentCreatorRole(input.userId, doc?.departmentId, doc?.ownerId)
 
   const effReviewerId = input.reviewerId ?? latest.reviewerId
   const effApproverId = input.approverId ?? latest.approverId
@@ -271,7 +173,23 @@ export async function saveDraftVersion(input: {
     assertAssignment(doc?.ownerId ?? input.userId, effReviewerId, effApproverId)
   }
 
-  const relations = await buildVersionRelations(latest.id, latest.id, input.userId)
+  if (!intervalSame) {
+    await prisma.document.update({
+      where: { id: input.documentId },
+      data: { reviewIntervalMonths: nextInterval ?? null },
+    })
+  }
+
+  const baseRelations = await buildVersionRelations(latest.id, latest.id, input.userId)
+  const relations = {
+    ...baseRelations,
+    ...(input.departmentIds
+      ? { scopeDepartments: { create: nextDeptIds.map((departmentId) => ({ departmentId })) } }
+      : {}),
+    ...(input.jobRoleIds
+      ? { scopeJobRoles: { create: nextRoleIds.map((jobRoleId) => ({ jobRoleId })) } }
+      : {}),
+  }
 
   // Draft → weiterzählen; Released → neue Bearbeitungsrunde (1.0 → 1.1)
   const v = await prisma.documentVersion.create({
@@ -283,7 +201,7 @@ export async function saveDraftVersion(input: {
       content: input.content,
       changeReason: input.changeReason,
       status: "Draft",
-      visibility: latest.visibility,
+      visibility: nextVisibility,
       createdById: input.userId,
       reviewerId: effReviewerId ?? null,
       approverId: effApproverId ?? null,
@@ -295,7 +213,14 @@ export async function saveDraftVersion(input: {
     action: "SAVE_DRAFT",
     entityType: "DocumentVersion",
     entityId: v.id,
-    after: { major: v.majorVersion, minor: v.minorVersion, reviewerId: effReviewerId, approverId: effApproverId },
+    after: {
+      major: v.majorVersion,
+      minor: v.minorVersion,
+      title: v.title,
+      visibility: v.visibility,
+      reviewerId: effReviewerId,
+      approverId: effApproverId,
+    },
   })
   return v
 }
@@ -311,7 +236,6 @@ export async function restoreVersion(input: {
     throw new Error("Zurückspringen ist nur im Entwurfs-Status möglich.")
   }
 
-  const { assertCanEditVersion, buildVersionRelations } = await import("./document-helpers")
   await assertCanEditVersion(input.userId, latest.id)
 
   const source = await prisma.documentVersion.findFirst({
@@ -349,16 +273,3 @@ export async function restoreVersion(input: {
   })
   return v
 }
-
-/** Schließt alle offenen Tasks einer Version mit Status+Kommentar. */
-function closePendingTasks(versionId: string, status: "Approved" | "Rejected", comment?: string) {
-  return prisma.workflowTask.updateMany({
-    where: { documentVersionId: versionId, status: "Pending" },
-    data: { status, comments: comment, completedAt: new Date() },
-  })
-}
-
-/**
- * Einreichung zur Prüfung → Freeze (In_Review) + Review-Task für den Prüfer.
- * Nur der Ersteller der aktuellen Version darf einreichen.
- */

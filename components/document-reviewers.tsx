@@ -30,7 +30,7 @@ export function DocumentReviewers({
   const approvalTasks = current.workflowTasks.filter((t) => t.taskType === "Approval")
 
   return (
-    <div className="border-t pt-3 text-sm text-gray-600 flex flex-wrap items-center gap-4">
+    <div className="border-t pt-3 text-sm text-muted-foreground flex flex-wrap items-center gap-4">
       {/* Prüfer */}
       <div className="flex items-center gap-1.5 flex-wrap">
         <span>Prüfer:</span>
@@ -48,7 +48,7 @@ export function DocumentReviewers({
                 <Badge variant="outline" className="text-[10px] text-muted-foreground">Erloschen</Badge>
               )}
               {t.status === "Approved" && (
-                <Badge variant="default" className="text-[10px] bg-emerald-600">Geprüft</Badge>
+                <Badge variant="default" className="text-[10px] bg-emerald-600 text-white">Geprüft</Badge>
               )}
             </span>
           ))
@@ -91,7 +91,7 @@ export function DocumentReviewers({
                 <Badge variant="outline" className="text-[10px] text-muted-foreground">Erloschen</Badge>
               )}
               {t.status === "Approved" && (
-                <Badge variant="default" className="text-[10px] bg-emerald-600">Genehmigt</Badge>
+                <Badge variant="default" className="text-[10px] bg-emerald-600 text-white">Genehmigt</Badge>
               )}
             </span>
           ))

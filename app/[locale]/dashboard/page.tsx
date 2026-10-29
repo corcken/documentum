@@ -26,7 +26,7 @@ export default async function DashboardPage() {
           <h1 className="text-2xl font-bold">
             Hallo, {session.user.name ?? session.user.email} 👋
           </h1>
-          <p className="text-sm text-gray-500">Willkommen bei Documentum.</p>
+          <p className="text-sm text-muted-foreground">Willkommen bei Documentum.</p>
         </div>
         {!isViewer && (
           <Link href="/documents/neu" className={buttonVariants()}>
@@ -39,14 +39,14 @@ export default async function DashboardPage() {
         <Link href="/aufgaben" className="group">
           <Card className="transition-shadow group-hover:shadow-md">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
                 Offene Aufgaben
               </CardTitle>
-              <ClipboardCheck className="size-4 text-blue-600" />
+              <ClipboardCheck className="size-4 text-primary" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{openTasks}</div>
-              <p className="text-xs text-gray-400">Prüfungen & Freigaben, die auf dich warten</p>
+              <p className="text-xs text-muted-foreground">Prüfungen & Freigaben, die auf dich warten</p>
             </CardContent>
           </Card>
         </Link>
@@ -54,14 +54,14 @@ export default async function DashboardPage() {
         <Link href="/documents" className="group">
           <Card className="transition-shadow group-hover:shadow-md">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
                 Meine Dokumente
               </CardTitle>
-              <FileText className="size-4 text-blue-600" />
+              <FileText className="size-4 text-primary" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{myDocuments}</div>
-              <p className="text-xs text-gray-400">Von dir erstellte Dokumente</p>
+              <p className="text-xs text-muted-foreground">Von dir erstellte Dokumente</p>
             </CardContent>
           </Card>
         </Link>
@@ -69,14 +69,14 @@ export default async function DashboardPage() {
         <Link href="/documents" className="group">
           <Card className="transition-shadow group-hover:shadow-md">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
                 Dokumente gesamt
               </CardTitle>
-              <FolderOpen className="size-4 text-blue-600" />
+              <FolderOpen className="size-4 text-primary" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{totalDocuments}</div>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 {isViewer ? "Freigegebene Dokumente" : "Alle Dokumente im System"}
               </p>
             </CardContent>

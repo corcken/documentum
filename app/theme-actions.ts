@@ -15,6 +15,7 @@ const ALLOWED_THEMES = [
   "herbst",
   "tiefsee",
   "marine",
+  "dokumentum",
 ] as const
 export type ThemeName = (typeof ALLOWED_THEMES)[number]
 

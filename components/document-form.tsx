@@ -49,18 +49,18 @@ export function DocumentForm({
     <div className="space-y-6">
       {/* Vorlagen-Auswahl (optional) */}
       {templates.length > 0 && (
-        <div className="rounded-lg border bg-blue-50/50 p-4 space-y-3">
+        <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <Label htmlFor="templateSelect" className="font-semibold text-sm text-blue-900">
+              <Label htmlFor="templateSelect" className="font-semibold text-sm text-foreground">
                 Aus Vorlage übernehmen (optional)
               </Label>
-              <p className="text-xs text-blue-700">
+              <p className="text-xs text-muted-foreground">
                 Übernimmt Titel-Gerüst, Inhalt, Dokumenttyp, Prüfintervall und Sichtbarkeit als Startwerte.
               </p>
             </div>
             {initialValues && (
-              <span className="text-xs font-medium bg-blue-100 text-blue-800 px-2.5 py-1 rounded border border-blue-200">
+              <span className="text-xs font-medium bg-primary/10 text-primary px-2.5 py-1 rounded border border-primary/30">
                 Vorlage: {initialValues.sourceDocumentNumber} (v{initialValues.sourceVersion})
               </span>
             )}
@@ -74,7 +74,7 @@ export function DocumentForm({
                 const val = e.target.value
                 window.location.href = val ? `/documents/neu?template=${val}` : `/documents/neu`
               }}
-              className="h-9 flex-1 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="h-9 flex-1 rounded-md border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">-- Keine Vorlage (leeres Dokument) --</option>
               {templates.map((t) => (
@@ -92,7 +92,7 @@ export function DocumentForm({
           <input type="hidden" name="templateId" value={selectedTemplateId} />
         )}
         {state?.error && (
-          <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">{state.error}</div>
+          <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</div>
         )}
 
         <div className="grid gap-4 md:grid-cols-3">
@@ -116,7 +116,7 @@ export function DocumentForm({
               required
               defaultValue={initialValues?.typeId || ""}
               key={`type-${initialValues?.typeId || "default"}`}
-              className="h-9 w-full rounded-lg border border-input bg-white px-3 text-sm"
+              className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm"
             >
               <option value="" disabled>
                 Typ wählen
@@ -146,7 +146,7 @@ export function DocumentForm({
               name="visibility"
               defaultValue={initialValues?.visibility || "PUBLIC"}
               key={`vis-${initialValues?.visibility || "default"}`}
-              className="block w-full rounded-md border border-input h-10 px-3 bg-white"
+              className="block h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
             >
               <option value="PUBLIC">Betriebsöffentlich (PUBLIC)</option>
               <option value="SCOPED">Geltungsbereich (SCOPED)</option>
@@ -171,7 +171,7 @@ export function DocumentForm({
               name="responsibleDepartmentId"
               required
               defaultValue=""
-              className="h-9 w-full rounded-lg border border-input bg-white px-3 text-sm"
+              className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm"
             >
               <option value="" disabled>
                 Bereich wählen
@@ -195,11 +195,11 @@ export function DocumentForm({
             placeholder="Dokumentinhalt…"
             defaultValue={initialValues?.content || ""}
             key={`content-${initialValues?.content ? "loaded" : "default"}`}
-            className="w-full rounded-lg border border-input bg-white px-3 py-2 text-sm leading-relaxed"
+            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm leading-relaxed"
           />
         </div>
 
-      <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 text-xs text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-200">
+      <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-foreground">
         ℹ️ Prüfer und Genehmiger werden beim Einreichen zur Prüfung automatisch anhand der für den verantwortlichen Bereich hinterlegten Rollen zugewiesen.
       </div>
 
@@ -208,7 +208,7 @@ export function DocumentForm({
           <Label>Geltungsbereich: Organisationseinheiten</Label>
           <div className="max-h-52 space-y-1 overflow-y-auto rounded-lg border p-2">
             {departments.length === 0 && (
-              <p className="text-sm text-gray-400">Keine Organisationseinheiten vorhanden.</p>
+              <p className="text-sm text-muted-foreground">Keine Organisationseinheiten vorhanden.</p>
             )}
             {departments.map((d) => (
               <label key={d.id} className="flex cursor-pointer items-center gap-2 text-sm">
@@ -223,13 +223,13 @@ export function DocumentForm({
               </label>
             ))}
           </div>
-          <p className="text-xs text-gray-500">Untergeordnete Einheiten sind automatisch mit erfasst.</p>
+          <p className="text-xs text-muted-foreground">Untergeordnete Einheiten sind automatisch mit erfasst.</p>
         </div>
         <div className="space-y-2">
           <Label>Geltungsbereich: Job-Rollen</Label>
           <div className="max-h-52 space-y-1 overflow-y-auto rounded-lg border p-2">
             {jobRoles.length === 0 && (
-              <p className="text-sm text-gray-400">Keine Job-Rollen vorhanden.</p>
+              <p className="text-sm text-muted-foreground">Keine Job-Rollen vorhanden.</p>
             )}
             {jobRoles.map((r) => (
               <label key={r.id} className="flex cursor-pointer items-center gap-2 text-sm">

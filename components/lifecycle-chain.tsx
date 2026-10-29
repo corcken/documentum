@@ -22,21 +22,20 @@ export function LifecycleChain({ status, timestamps = {} }: { status: DocumentSt
   const currentIndex = flow.indexOf(status)
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-white p-4">
-      <span className="text-sm font-medium mr-2 text-gray-500">Lebenszyklus:</span>
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-4">
+      <span className="text-sm font-medium mr-2 text-muted-foreground">Lebenszyklus:</span>
       <div className="flex flex-wrap items-center gap-2">
         {flow.map((s, idx) => {
           const isPast = idx < currentIndex
           const isCurrent = idx === currentIndex
           const ts = timestamps[s]
-          
-          let badgeVariant = "outline"
-          let className = "text-gray-400 border-gray-200"
-          
+
+          let className = "text-muted-foreground border-border"
+
           if (isCurrent) {
             className = DOCUMENT_STATUS_STYLES[s] || ""
           } else if (isPast) {
-            className = "bg-gray-100 text-gray-500 border-gray-200"
+            className = "bg-muted text-muted-foreground border-border"
           }
 
           return (
@@ -46,13 +45,13 @@ export function LifecycleChain({ status, timestamps = {} }: { status: DocumentSt
                   {DOCUMENT_STATUS_LABELS[s] || s}
                 </Badge>
                 {ts && (
-                  <span className="text-[10px] text-gray-400 mt-1">
+                  <span className="text-[10px] text-muted-foreground mt-1">
                     {ts.toLocaleDateString("de-DE")}
                   </span>
                 )}
               </div>
               {idx < flow.length - 1 && (
-                <ArrowRight className={`size-4 ${isPast ? "text-gray-400" : "text-gray-200"} mb-[14px]`} />
+                <ArrowRight className={`size-4 ${isPast ? "text-muted-foreground" : "text-border"} mb-[14px]`} />
               )}
             </div>
           )

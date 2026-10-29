@@ -26,9 +26,9 @@ export function OrgUnitForm({
   const selectedParent = parentId ?? unit?.parentId ?? ROOT
 
   return (
-    <form action={formAction} className="space-y-4 rounded-lg border bg-white p-4">
+    <form action={formAction} className="space-y-4 rounded-lg border border-border bg-card p-4">
       {state?.error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">{state.error}</div>
+        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</div>
       )}
       {isEdit && <input type="hidden" name="id" value={unit!.id} />}
 
@@ -48,7 +48,7 @@ export function OrgUnitForm({
             id="parentId"
             name="parentId"
             defaultValue={selectedParent}
-            className="h-9 w-full rounded-lg border border-input bg-white px-3 text-sm"
+            className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm"
           >
             <option value={ROOT}>— keine (oberste Ebene) —</option>
             {units.map((u) => (

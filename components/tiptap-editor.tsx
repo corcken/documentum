@@ -44,8 +44,8 @@ export function TiptapEditor({ value, onChange }: { value: string; onChange: (js
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border bg-white">
-      <div className="flex flex-wrap items-center gap-0.5 border-b bg-gray-50 px-2 py-1.5">
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
+      <div className="flex flex-wrap items-center gap-0.5 border-b border-border bg-muted px-2 py-1.5">
         <ToolbarButton
           active={editor.isActive("heading", { level: 1 })}
           title="Überschrift 1"
@@ -60,14 +60,14 @@ export function TiptapEditor({ value, onChange }: { value: string; onChange: (js
         >
           <Heading2 className="size-4" />
         </ToolbarButton>
-        <span className="mx-1 h-4 w-px bg-gray-300" />
+        <span className="mx-1 h-4 w-px bg-border" />
         <ToolbarButton active={editor.isActive("bold")} title="Fett" onClick={() => editor.chain().focus().toggleBold().run()}>
           <Bold className="size-4" />
         </ToolbarButton>
         <ToolbarButton active={editor.isActive("italic")} title="Kursiv" onClick={() => editor.chain().focus().toggleItalic().run()}>
           <Italic className="size-4" />
         </ToolbarButton>
-        <span className="mx-1 h-4 w-px bg-gray-300" />
+        <span className="mx-1 h-4 w-px bg-border" />
         <ToolbarButton
           active={editor.isActive("bulletList")}
           title="Aufzählung"
@@ -82,7 +82,7 @@ export function TiptapEditor({ value, onChange }: { value: string; onChange: (js
         >
           <ListOrdered className="size-4" />
         </ToolbarButton>
-        <span className="mx-1 h-4 w-px bg-gray-300" />
+        <span className="mx-1 h-4 w-px bg-border" />
         <ToolbarButton title="Rückgängig" onClick={() => editor.chain().focus().undo().run()}>
           <Undo2 className="size-4" />
         </ToolbarButton>

@@ -148,12 +148,12 @@ export function AvatarCropBox({
   }
 
   return (
-    <div className="space-y-4 rounded-lg border bg-gray-50 p-4">
-      <div className="text-sm font-medium text-gray-800">
+    <div className="space-y-4 rounded-lg border border-border bg-muted/50 p-4">
+      <div className="text-sm font-medium text-foreground">
         Bild zuschneiden & positionieren:
       </div>
       <div className="flex flex-col items-center gap-4">
-        <div className="relative border-2 border-dashed border-blue-400 rounded-lg overflow-hidden bg-white shadow-inner">
+        <div className="relative border-2 border-dashed border-primary/40 rounded-lg overflow-hidden bg-background shadow-inner">
           <canvas
             ref={canvasRef}
             width={280}
@@ -168,7 +168,7 @@ export function AvatarCropBox({
         </div>
 
         <div className="w-full max-w-xs space-y-1">
-          <div className="flex justify-between text-xs text-gray-500">
+          <div className="flex justify-between text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <ZoomIn className="size-3" /> Zoom:
             </span>
@@ -181,7 +181,7 @@ export function AvatarCropBox({
             step="0.05"
             value={zoom}
             onChange={(e) => handleZoomChange(parseFloat(e.target.value))}
-            className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+            className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
           />
         </div>
 

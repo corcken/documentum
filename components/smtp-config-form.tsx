@@ -29,21 +29,21 @@ export function SmtpConfigForm({ initialSettings }: { initialSettings: SmtpSetti
   return (
     <form action={formAction} className="space-y-5 max-w-xl">
       {state?.ok && (
-        <div className="rounded-md bg-green-50 p-3 text-sm text-green-800 flex items-center gap-2">
+        <div className="flex items-center gap-2 rounded-md border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-400">
           <CheckCircle2 className="size-4" /> {state.ok}
         </div>
       )}
       {state?.error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-800 flex items-center gap-2">
+        <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
           <AlertCircle className="size-4" /> {state.error}
         </div>
       )}
       {testResult && (
         <div
-          className={`rounded-md p-3 text-sm flex items-center gap-2 ${
+          className={`flex items-center gap-2 rounded-md border p-3 text-sm ${
             testResult.success
-              ? "bg-green-50 text-green-800 border border-green-200"
-              : "bg-red-50 text-red-800 border border-red-200"
+              ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+              : "border-destructive/30 bg-destructive/10 text-destructive"
           }`}
         >
           {testResult.success ? <Check className="size-4" /> : <AlertCircle className="size-4" />}
@@ -51,7 +51,7 @@ export function SmtpConfigForm({ initialSettings }: { initialSettings: SmtpSetti
         </div>
       )}
 
-      <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-3 text-xs text-blue-800 space-y-1">
+      <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs text-foreground space-y-1">
         <p className="font-semibold">Test- und Simulationsmodus:</p>
         <p>
           Wenn der E-Mail-Versand deaktiviert ist oder kein Host eingetragen wurde, werden alle E-Mails im
@@ -65,7 +65,7 @@ export function SmtpConfigForm({ initialSettings }: { initialSettings: SmtpSetti
           id="enabled"
           name="enabled"
           defaultChecked={initialSettings.enabled}
-          className="size-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          className="size-4 rounded border-input accent-primary focus:ring-ring"
         />
         <Label htmlFor="enabled" className="text-sm font-medium cursor-pointer">
           E-Mail-Versand via SMTP aktivieren
@@ -99,7 +99,7 @@ export function SmtpConfigForm({ initialSettings }: { initialSettings: SmtpSetti
           id="secure"
           name="secure"
           defaultChecked={initialSettings.secure}
-          className="size-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          className="size-4 rounded border-input accent-primary focus:ring-ring"
         />
         <Label htmlFor="secure" className="text-sm cursor-pointer">
           SSL/TLS Verschlüsselung erzwingen (Secure)

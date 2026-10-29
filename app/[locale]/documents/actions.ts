@@ -1,22 +1,23 @@
 "use server"
 
 import { z } from "zod"
-import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
-import {
-  createDocument,
-  restoreVersion,
-  saveDraftVersion,
-} from "@/lib/services/document"
-import {
-  approveReview,
-  approveVersion,
-  returnToAuthor,
-  submitForReview,
-} from "@/lib/services/workflow"
+import { createDocument, restoreVersion, saveDraftVersion } from "@/lib/services/document"
+import { approveReview, approveVersion, returnToAuthor, submitForReview } from "@/lib/services/workflow"
 import { requireUser } from "@/lib/auth-guard"
 import type { Prisma } from "@prisma/client"
+
+function isRedirectError(e: unknown): boolean {
+  const err = e as { message?: string; digest?: string }
+  return err?.message === "NEXT_REDIRECT" || Boolean(err?.digest?.startsWith?.("NEXT_REDIRECT"))
+}
+
+function redirectWithError(fallbackPath: string, e: unknown, defaultMsg: string): never {
+  if (isRedirectError(e)) throw e
+  const msg = e instanceof Error ? e.message : defaultMsg
+  redirect(`${fallbackPath}?error=${encodeURIComponent(msg)}`)
+}
 
 // ── Anlegen ─────────────────────────────────────────────────────────────────
 
@@ -45,7 +46,10 @@ export async function createDocumentAction(_prev: CreateDocumentState, formData:
   const departmentId = rawDept && rawDept.trim() ? rawDept.trim() : undefined
 
   const scopeDepts = formData.getAll("scopeDepartmentId")
-  const departmentIds = scopeDepts.length > 0 ? (scopeDepts as string[]) : (formData.getAll("departmentId") as string[]).filter(id => id !== departmentId)
+  const departmentIds =
+    scopeDepts.length > 0
+      ? (scopeDepts as string[])
+      : (formData.getAll("departmentId") as string[]).filter((id) => id !== departmentId)
 
   const parsed = createSchema.safeParse({
     documentNumber: formData.get("documentNumber") ?? undefined,
@@ -58,7 +62,9 @@ export async function createDocumentAction(_prev: CreateDocumentState, formData:
     reviewerId: (formData.get("reviewerId") as string) || undefined,
     approverId: (formData.get("approverId") as string) || undefined,
     visibility: (formData.get("visibility") as string) || undefined,
-    reviewIntervalMonths: formData.get("reviewIntervalMonths") ? Number(formData.get("reviewIntervalMonths")) : undefined,
+    reviewIntervalMonths: formData.get("reviewIntervalMonths")
+      ? Number(formData.get("reviewIntervalMonths"))
+      : undefined,
     templateId: (formData.get("templateId") as string) || undefined,
   })
 
@@ -74,7 +80,9 @@ export async function createDocumentAction(_prev: CreateDocumentState, formData:
     if ((e as Prisma.PrismaClientKnownRequestError)?.code === "P2002") {
       return { error: "Diese Dokumentnummer ist bereits vergeben." }
     }
-    return { error: "Dokument konnte nicht angelegt werden. Bitte erneut versuchen." }
+    return {
+      error: e instanceof Error ? e.message : "Dokument konnte nicht angelegt werden. Bitte erneut versuchen.",
+    }
   }
 
   revalidatePath("/documents")
@@ -101,8 +109,23 @@ export async function saveDraftAction(_prev: WorkflowActionState, formData: Form
   const reviewerId = (formData.get("reviewerId") as string) || undefined
   const approverId = (formData.get("approverId") as string) || undefined
   const changeReason = String(formData.get("changeReason") ?? "")
+  const visibility = (formData.get("visibility") as string) || undefined
+  const rawInterval = formData.get("reviewIntervalMonths")
+  const reviewIntervalMonths =
+    rawInterval !== null
+      ? String(rawInterval).trim() !== ""
+        ? Number(rawInterval)
+        : null
+      : undefined
+  const hasScopeUpdate = formData.get("hasScopeUpdate") === "true"
+  const departmentIds = hasScopeUpdate ? (formData.getAll("scopeDepartmentId") as string[]) : undefined
+  const jobRoleIds = hasScopeUpdate ? (formData.getAll("jobRoleId") as string[]) : undefined
+
   try {
-    await saveDraftVersion({ documentId, title, content, changeReason, userId, reviewerId, approverId })
+    await saveDraftVersion({
+      documentId, title, content, changeReason, userId,
+      reviewerId, approverId, visibility, reviewIntervalMonths, departmentIds, jobRoleIds,
+    })
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Speichern fehlgeschlagen." }
   }
@@ -114,18 +137,27 @@ export async function saveDraftAction(_prev: WorkflowActionState, formData: Form
 export async function submitForReviewAction(formData: FormData) {
   const userId = await actorId()
   const documentId = String(formData.get("documentId") ?? "")
-  await submitForReview({ documentId, userId })
-  revalidatePath(`/documents/${documentId}`)
-  redirect(`/documents/${documentId}`)
+  try {
+    await submitForReview({ documentId, userId })
+    revalidatePath(`/documents/${documentId}`)
+    redirect(`/documents/${documentId}`)
+  } catch (e) {
+    redirectWithError(`/documents/${documentId}`, e, "Einreichen fehlgeschlagen.")
+  }
 }
 
 /** Prüfung bestanden → in Freigabe. */
 export async function approveReviewAction(formData: FormData) {
   const userId = await actorId()
   const versionId = String(formData.get("versionId") ?? "")
-  const v = await approveReview({ versionId, userId })
-  revalidatePath(`/documents/${v.documentId}`)
-  redirect(`/documents/${v.documentId}`)
+  const docId = String(formData.get("documentId") ?? "")
+  try {
+    const v = await approveReview({ versionId, userId })
+    revalidatePath(`/documents/${v.documentId}`)
+    redirect(`/documents/${v.documentId}`)
+  } catch (e) {
+    redirectWithError(docId ? `/documents/${docId}` : "/documents", e, "Prüfung fehlgeschlagen.")
+  }
 }
 
 /** Zurück an den Ersteller mit Kommentar. */
@@ -133,9 +165,14 @@ export async function returnToAuthorAction(formData: FormData) {
   const userId = await actorId()
   const versionId = String(formData.get("versionId") ?? "")
   const comment = String(formData.get("comment") ?? "")
-  const v = await returnToAuthor({ versionId, comment, userId })
-  revalidatePath(`/documents/${v.documentId}`)
-  redirect(`/documents/${v.documentId}`)
+  const docId = String(formData.get("documentId") ?? "")
+  try {
+    const v = await returnToAuthor({ versionId, comment, userId })
+    revalidatePath(`/documents/${v.documentId}`)
+    redirect(`/documents/${v.documentId}`)
+  } catch (e) {
+    redirectWithError(docId ? `/documents/${docId}` : "/documents", e, "Rückgabe fehlgeschlagen.")
+  }
 }
 
 /** Genehmigen → Major+1, Minor 0, Released mit elektronischer Signatur (Part 11). */
@@ -150,12 +187,8 @@ export async function approveAction(formData: FormData) {
     const v = await approveVersion({ versionId, userId, password, signatureMeaning })
     revalidatePath(`/documents/${v.documentId}`)
     redirect(`/documents/${v.documentId}`)
-  } catch (e: any) {
-    if (e?.message === "NEXT_REDIRECT" || e?.digest?.startsWith?.("NEXT_REDIRECT")) {
-      throw e
-    }
-    const redirectUrl = docId ? `/documents/${docId}` : `/documents`
-    redirect(`${redirectUrl}?error=${encodeURIComponent(e instanceof Error ? e.message : "Freigabe fehlgeschlagen.")}`)
+  } catch (e) {
+    redirectWithError(docId ? `/documents/${docId}` : "/documents", e, "Freigabe fehlgeschlagen.")
   }
 }
 
@@ -164,16 +197,19 @@ export async function withdrawAction(formData: FormData) {
   const session = await requireUser()
   const userId = session.user.id!
   const userRole = session.user.role!
-  
+
   const versionId = String(formData.get("versionId") ?? "")
+  const docId = String(formData.get("documentId") ?? "")
   const comment = String(formData.get("comment") ?? "")
-  
-  // To avoid circular dependencies with `document.ts`, we can import `withdrawDocument` dynamically or just normally.
-  const { withdrawDocument } = await import("@/lib/services/workflow")
-  
-  const v = await withdrawDocument({ documentId: "", versionId, userId, userRole, comment })
-  revalidatePath(`/documents/${v.documentId}`)
-  redirect(`/documents/${v.documentId}`)
+
+  try {
+    const { withdrawDocument } = await import("@/lib/services/workflow")
+    const v = await withdrawDocument({ documentId: docId, versionId, userId, userRole, comment })
+    revalidatePath(`/documents/${v.documentId}`)
+    redirect(`/documents/${v.documentId}`)
+  } catch (e) {
+    redirectWithError(docId ? `/documents/${docId}` : "/documents", e, "Zurückziehen fehlgeschlagen.")
+  }
 }
 
 /** Zurückspringen auf einen älteren Stand (erzeugt neue Minor-Version). */
@@ -183,44 +219,48 @@ export async function restoreAction(formData: FormData) {
   const sourceVersionId = String(formData.get("sourceVersionId") ?? "")
   try {
     await restoreVersion({ documentId, sourceVersionId, userId })
+    revalidatePath(`/documents/${documentId}`)
+    redirect(`/documents/${documentId}`)
   } catch (e) {
-    redirect(`/documents/${documentId}?error=${encodeURIComponent(e instanceof Error ? e.message : "Zurückspringen fehlgeschlagen.")}`)
+    redirectWithError(`/documents/${documentId}`, e, "Zurückspringen fehlgeschlagen.")
   }
-  revalidatePath(`/documents/${documentId}`)
-  redirect(`/documents/${documentId}`)
 }
 
 export async function attachAction(formData: FormData) {
   const session = await requireUser()
   if (session.user.role === "VIEWER") redirect("/documents")
   const userId = session.user.id!
-  const documentId = formData.get("documentId") as string
-  const versionId = formData.get("versionId") as string
-  const assetId = formData.get("assetId") as string
+  const documentId = String(formData.get("documentId") ?? "")
+  const versionId = String(formData.get("versionId") ?? "")
+  const assetId = String(formData.get("assetId") ?? "")
 
-  if (!versionId || !assetId) throw new Error("Fehlende Daten")
-  
-  const { attachFileToVersion } = await import("@/lib/services/attachment")
-  await attachFileToVersion(assetId, versionId, userId)
-  
-  revalidatePath(`/documents/${documentId}/edit`)
-  revalidatePath(`/documents/${documentId}`)
+  try {
+    if (!versionId || !assetId) throw new Error("Fehlende Daten")
+    const { attachFileToVersion } = await import("@/lib/services/attachment")
+    await attachFileToVersion(assetId, versionId, userId)
+    revalidatePath(`/documents/${documentId}/edit`)
+    revalidatePath(`/documents/${documentId}`)
+  } catch (e) {
+    redirectWithError(`/documents/${documentId}/edit`, e, "Anhängen fehlgeschlagen.")
+  }
 }
 
 export async function detachAction(formData: FormData) {
   const session = await requireUser()
   if (session.user.role === "VIEWER") redirect("/documents")
   const userId = session.user.id!
-  const documentId = formData.get("documentId") as string
-  const useId = formData.get("useId") as string
+  const documentId = String(formData.get("documentId") ?? "")
+  const useId = String(formData.get("useId") ?? "")
 
-  if (!useId) throw new Error("Fehlende Daten")
-  
-  const { detachFileFromVersion } = await import("@/lib/services/attachment")
-  await detachFileFromVersion(useId, userId)
-  
-  revalidatePath(`/documents/${documentId}/edit`)
-  revalidatePath(`/documents/${documentId}`)
+  try {
+    if (!useId) throw new Error("Fehlende Daten")
+    const { detachFileFromVersion } = await import("@/lib/services/attachment")
+    await detachFileFromVersion(useId, userId)
+    revalidatePath(`/documents/${documentId}/edit`)
+    revalidatePath(`/documents/${documentId}`)
+  } catch (e) {
+    redirectWithError(`/documents/${documentId}/edit`, e, "Entfernen fehlgeschlagen.")
+  }
 }
 
 export type UploadAndAttachState = { error?: string; ok?: string } | null
@@ -244,12 +284,12 @@ export async function uploadAndAttachAction(
     if (!versionId || !file || file.size === 0) {
       return { error: "Keine Datei ausgewählt" }
     }
-    
+
     const { uploadFile } = await import("@/lib/services/file")
     const { attachFileToVersion } = await import("@/lib/services/attachment")
     const asset = await uploadFile(file, userId)
     await attachFileToVersion(asset.id, versionId, userId)
-    
+
     revalidatePath(`/documents/${documentId}/edit`)
     revalidatePath(`/documents/${documentId}`)
     return { ok: "Datei erfolgreich hochgeladen und angehängt." }
@@ -262,32 +302,46 @@ export async function startReviewWithoutChangeAction(formData: FormData) {
   const session = await requireUser()
   const documentId = String(formData.get("documentId") ?? "")
   const comment = String(formData.get("comment") ?? "")
-  
-  const { startReviewWithoutChange } = await import("@/lib/services/workflow")
-  await startReviewWithoutChange({ documentId, userId: session.user.id!, userRole: session.user.role!, comment })
-  
-  revalidatePath(`/documents/${documentId}`)
-  redirect(`/documents/${documentId}`)
+
+  try {
+    const { startReviewWithoutChange } = await import("@/lib/services/workflow")
+    await startReviewWithoutChange({
+      documentId,
+      userId: session.user.id!,
+      userRole: session.user.role!,
+      comment,
+    })
+    revalidatePath(`/documents/${documentId}`)
+    redirect(`/documents/${documentId}`)
+  } catch (e) {
+    redirectWithError(`/documents/${documentId}`, e, "Prüfung ohne Änderung konnte nicht gestartet werden.")
+  }
 }
 
 export async function markAsTemplateAction(formData: FormData) {
   const session = await requireUser()
   const documentId = String(formData.get("documentId") ?? "")
-  
-  const { markAsTemplate } = await import("@/lib/services/template")
-  await markAsTemplate(documentId, session.user.id!)
-  
-  revalidatePath(`/documents/${documentId}`)
-  revalidatePath("/documents")
+
+  try {
+    const { markAsTemplate } = await import("@/lib/services/template")
+    await markAsTemplate(documentId, session.user.id!)
+    revalidatePath(`/documents/${documentId}`)
+    revalidatePath("/documents")
+  } catch (e) {
+    redirectWithError(`/documents/${documentId}`, e, "Vorlagen-Markierung fehlgeschlagen.")
+  }
 }
 
 export async function unmarkAsTemplateAction(formData: FormData) {
   const session = await requireUser()
   const documentId = String(formData.get("documentId") ?? "")
-  
-  const { unmarkAsTemplate } = await import("@/lib/services/template")
-  await unmarkAsTemplate(documentId, session.user.id!)
-  
-  revalidatePath(`/documents/${documentId}`)
-  revalidatePath("/documents")
+
+  try {
+    const { unmarkAsTemplate } = await import("@/lib/services/template")
+    await unmarkAsTemplate(documentId, session.user.id!)
+    revalidatePath(`/documents/${documentId}`)
+    revalidatePath("/documents")
+  } catch (e) {
+    redirectWithError(`/documents/${documentId}`, e, "Vorlagen-Entfernung fehlgeschlagen.")
+  }
 }

@@ -4,6 +4,7 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { PageHeader } from "@/components/page-header"
 import { formatVersion } from "@/lib/version"
 import { AlertCircle } from "lucide-react"
 import { getTranslations } from "next-intl/server"
@@ -46,14 +47,9 @@ export default async function PrueffaelligPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <AlertCircle className="size-6 text-red-600" />
-          Prüffällige Dokumente
-        </h1>
-      </div>
+      <PageHeader title="Prüffällige Dokumente" icon={AlertCircle} iconClassName="text-destructive" />
 
-      <div className="rounded-lg border bg-white">
+      <div className="rounded-lg border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -67,17 +63,17 @@ export default async function PrueffaelligPage() {
           <TableBody>
             {visibleDocs.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-gray-400">
+                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
                   Aktuell keine Dokumente prüffällig.
                 </TableCell>
               </TableRow>
             )}
             {visibleDocs.map(({ doc, currentVersion: v }) => (
               <TableRow key={doc.id}>
-                <TableCell className="font-mono text-sm">{doc.documentNumber}</TableCell>
+                <TableCell className="font-mono">{doc.documentNumber}</TableCell>
                 <TableCell className="max-w-md truncate font-medium">
                   {v.title}
-                  <span className="ml-2 text-xs text-gray-500">v{formatVersion(v.majorVersion, v.minorVersion)}</span>
+                  <span className="ml-2 text-xs text-muted-foreground">v{formatVersion(v.majorVersion, v.minorVersion)}</span>
                 </TableCell>
                 <TableCell>{doc.owner?.name ?? doc.owner?.email ?? "—"}</TableCell>
                 <TableCell>

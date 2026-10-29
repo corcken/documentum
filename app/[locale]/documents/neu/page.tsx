@@ -1,4 +1,4 @@
-import { auth } from "@/auth"
+import { requireUser } from "@/lib/auth-guard"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { prisma } from "@/lib/prisma"
@@ -13,8 +13,8 @@ export default async function NewDocumentPage({
 }: {
   searchParams: Promise<{ template?: string }>
 }) {
-  const session = await auth()
-  if (!session?.user) redirect("/")
+  const session = await requireUser()
+  if (session.user.role === "VIEWER") redirect("/documents")
   const userId = session.user.id!
 
   const sp = await searchParams

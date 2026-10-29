@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { logAudit } from "./audit"
 import { getLatestVersion } from "./document"
-import { calculateNextDate } from "./document-helpers"
+import { assertCanEditVersion, calculateNextDate, verifyElectronicSignature } from "./document-helpers"
 import {
   notifyReviewSubmitted,
   notifyReviewApproved,
@@ -29,15 +29,20 @@ export { startReviewWithoutChange } from "./workflow-quorum"
 
 /**
  * Einreichung zur Prüfung → Freeze (In_Review) + Review-Tasks für die Bereichs-Prüfer.
- * Nur der Ersteller der aktuellen Version darf einreichen.
+ * Berechtigt sind Ersteller der Version, Dokument-Eigentümer, Bereichs-Ersteller oder Admin.
  */
 export async function submitForReview(input: { documentId: string; userId: string }) {
   const latest = await getLatestVersion(input.documentId)
   if (!latest || latest.status !== "Draft") {
     throw new Error("Kein Entwurf zum Einreichen vorhanden.")
   }
+
   if (latest.createdById !== input.userId) {
-    throw new Error("Nur der Ersteller kann das Dokument zur Prüfung einreichen.")
+    try {
+      await assertCanEditVersion(input.userId, latest.id)
+    } catch {
+      throw new Error("Nur der Ersteller kann das Dokument zur Prüfung einreichen.")
+    }
   }
 
   const doc = await prisma.document.findUnique({
@@ -50,8 +55,13 @@ export async function submitForReview(input: { documentId: string; userId: strin
   let candidatePruefer: { id: string }[] = []
 
   if (doc?.departmentId) {
-    const pruefer = await getValidReviewCandidates(doc.departmentId, input.userId)
-    const freigeber = await getValidApprovalCandidates(doc.departmentId, input.userId)
+    const excludeCreatorId = latest.createdById ?? input.userId
+    const pruefer = (await getValidReviewCandidates(doc.departmentId, excludeCreatorId)).filter(
+      (u) => u.id !== input.userId
+    )
+    const freigeber = (await getValidApprovalCandidates(doc.departmentId, excludeCreatorId)).filter(
+      (u) => u.id !== input.userId
+    )
 
     if (pruefer.length === 0 || freigeber.length === 0) {
       throw new Error(
@@ -63,7 +73,6 @@ export async function submitForReview(input: { documentId: string; userId: strin
     reviewerId = pruefer[0].id
     approverId = freigeber[0].id
   } else {
-    // Altbestand ohne departmentId
     if (!latest.reviewerId || !latest.approverId) {
       throw new Error("Prüfer und Genehmiger müssen zugewiesen sein.")
     }
@@ -107,6 +116,25 @@ export async function submitForReview(input: { documentId: string; userId: strin
   return updatedVersion
 }
 
+/** Findet einen offenen Task für den User (inkl. Legacy-Fallback auf reviewerId/approverId). */
+async function findPendingWorkflowTask(
+  versionId: string,
+  taskType: "Review" | "Approval",
+  userId: string,
+  legacyAssigneeId: string | null
+) {
+  const myTask = await prisma.workflowTask.findFirst({
+    where: { documentVersionId: versionId, taskType, status: "Pending", assignedToId: userId },
+  })
+  if (myTask) return myTask
+  if (legacyAssigneeId === userId) {
+    return prisma.workflowTask.findFirst({
+      where: { documentVersionId: versionId, taskType, status: "Pending" },
+    })
+  }
+  return null
+}
+
 /**
  * Prüfung bestanden → je nach Quorum In_Approval oder warten auf übrige Prüfer.
  * Autorisierung läuft über den offenen Task des Users.
@@ -118,23 +146,7 @@ export async function approveReview(input: { versionId: string; userId: string }
   })
   if (!v) throw new Error("Version nicht gefunden.")
 
-  // Autorisierung: Hat der User einen offenen Review-Task?
-  const myTask = await prisma.workflowTask.findFirst({
-    where: {
-      documentVersionId: v.id,
-      taskType: "Review",
-      status: "Pending",
-      assignedToId: input.userId,
-    },
-  })
-  const legacyTask =
-    !myTask && v.reviewerId === input.userId
-      ? await prisma.workflowTask.findFirst({
-          where: { documentVersionId: v.id, taskType: "Review", status: "Pending" },
-        })
-      : null
-
-  const taskToComplete = myTask ?? legacyTask
+  const taskToComplete = await findPendingWorkflowTask(v.id, "Review", input.userId, v.reviewerId)
   if (!taskToComplete) {
     throw new Error("Sie sind kein zugewiesener Prüfer mit offener Aufgabe für diese Version.")
   }
@@ -155,7 +167,6 @@ export async function approveReview(input: { versionId: string; userId: string }
   const quorumMode = await getWorkflowQuorum(v.document.departmentId)
 
   if (quorumMode === "einer") {
-    // Quorum einer: Erster Abschluss gewinnt → übrige offene Review-Tasks erlöschen
     await cancelRemainingTasks(v.id, "Review", "Quorum einer erreicht", input.userId)
     await logAudit({
       userId: input.userId,
@@ -166,7 +177,6 @@ export async function approveReview(input: { versionId: string; userId: string }
     })
     await advanceToApprovalPhase(v, input.userId)
   } else {
-    // Quorum alle: Erst wenn alle Prüfer Approved sind, in Approval übergehen
     const remainingPending = await prisma.workflowTask.count({
       where: { documentVersionId: v.id, taskType: "Review", status: "Pending" },
     })
@@ -219,8 +229,6 @@ export async function returnToAuthor(input: { versionId: string; comment: string
   return v
 }
 
-import bcrypt from "bcryptjs"
-
 export type ApproveVersionInput = {
   versionId: string
   userId: string
@@ -239,73 +247,14 @@ export async function approveVersion(input: ApproveVersionInput) {
   })
   if (!v) throw new Error("Version nicht gefunden.")
 
-  const user = await prisma.user.findUnique({
-    where: { id: input.userId },
-    include: { role: true },
+  const signature = await verifyElectronicSignature({
+    userId: input.userId,
+    versionId: input.versionId,
+    password: input.password,
+    signatureMeaning: input.signatureMeaning,
   })
-  if (!user || !user.isActive) {
-    throw new Error("Benutzer nicht gefunden oder inaktiv.")
-  }
 
-  if (user.lockedUntil && user.lockedUntil > new Date()) {
-    throw new Error("Ihr Konto ist vorübergehend gesperrt. Bitte versuchen Sie es in 15 Minuten erneut.")
-  }
-
-  if (!input.password) {
-    throw new Error("Zur rechtsgültigen Freigabe (FDA 21 CFR Part 11) ist die Eingabe Ihres Passworts als elektronische Signatur erforderlich.")
-  }
-
-  const matches = await bcrypt.compare(input.password, user.password)
-  if (!matches) {
-    const newAttempts = (user.failedLoginAttempts || 0) + 1
-    const lockAccount = newAttempts >= 5
-    const lockedUntil = lockAccount ? new Date(Date.now() + 15 * 60 * 1000) : null
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { failedLoginAttempts: lockAccount ? 0 : newAttempts, lockedUntil },
-    })
-    await logAudit({
-      userId: user.id,
-      action: lockAccount ? "ACCOUNT_LOCKED" : "SIGNATURE_VERIFICATION_FAILED",
-      entityType: "DocumentVersion",
-      entityId: input.versionId,
-      after: { attempts: newAttempts, locked: lockAccount },
-    })
-    throw new Error(lockAccount ? "Konto wegen zu vieler Fehlversuche für 15 Minuten gesperrt." : "Das eingegebene Passwort zur elektronischen Signatur ist nicht korrekt.")
-  }
-
-  if (user.failedLoginAttempts > 0 || user.lockedUntil) {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { failedLoginAttempts: 0, lockedUntil: null },
-    })
-  }
-
-  const signature = {
-    signerId: user.id,
-    signerName: user.name ?? user.email,
-    signerEmail: user.email,
-    role: user.role?.name ?? "FREIGEBER",
-    meaning: input.signatureMeaning || "Ich habe das Dokument geprüft und gebe es hiermit gemäß QM-Vorgaben frei.",
-    timestamp: new Date().toISOString(),
-  }
-
-  const myTask = await prisma.workflowTask.findFirst({
-    where: {
-      documentVersionId: v.id,
-      taskType: "Approval",
-      status: "Pending",
-      assignedToId: input.userId,
-    },
-  })
-  const legacyTask =
-    !myTask && v.approverId === input.userId
-      ? await prisma.workflowTask.findFirst({
-          where: { documentVersionId: v.id, taskType: "Approval", status: "Pending" },
-        })
-      : null
-
-  const taskToComplete = myTask ?? legacyTask
+  const taskToComplete = await findPendingWorkflowTask(v.id, "Approval", input.userId, v.approverId)
   if (!taskToComplete) {
     throw new Error("Sie sind kein zugewiesener Genehmiger mit offener Aufgabe für diese Version.")
   }
@@ -324,7 +273,6 @@ export async function approveVersion(input: ApproveVersionInput) {
   })
 
   if (v.status === "Released") {
-    // Prüfung ohne Änderung abgeschlossen
     const nextReview = calculateNextDate(v.document.reviewIntervalMonths)
     await prisma.documentVersion.update({
       where: { id: v.id },
@@ -345,7 +293,6 @@ export async function approveVersion(input: ApproveVersionInput) {
   const quorumMode = await getWorkflowQuorum(v.document.departmentId)
 
   if (quorumMode === "einer") {
-    // Erster Abschluss gewinnt: übrige Approval-Tasks erlöschen
     await cancelRemainingTasks(v.id, "Approval", "Quorum einer erreicht", input.userId)
     await logAudit({
       userId: input.userId,
@@ -356,7 +303,6 @@ export async function approveVersion(input: ApproveVersionInput) {
     })
     await releaseVersionInternal(v, input.userId, signature)
   } else {
-    // Quorum alle: Erst wenn alle Freigeber zugestimmt haben, erfolgt Release
     const remainingPending = await prisma.workflowTask.count({
       where: { documentVersionId: v.id, taskType: "Approval", status: "Pending" },
     })

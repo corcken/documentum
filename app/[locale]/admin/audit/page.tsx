@@ -1,28 +1,56 @@
 import { requireAdmin } from "@/lib/auth-guard"
-import { getAuditActions, listAuditLogs, verifyAuditLogIntegrity } from "@/lib/services/audit"
+import {
+  countAuditLogs,
+  getAuditActions,
+  getAuditEntityTypes,
+  listAuditLogs,
+  verifyAuditLogIntegrity,
+} from "@/lib/services/audit"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { ShieldCheck, ShieldAlert, Link as LinkIcon } from "lucide-react"
+import { PageHeader } from "@/components/page-header"
+import { ShieldCheck, ShieldAlert, Link as LinkIcon, ChevronLeft, ChevronRight } from "lucide-react"
+import Link from "next/link"
+
+const PAGE_SIZE = 100
 
 export default async function AuditLogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ action?: string; q?: string }>
+  searchParams: Promise<{ action?: string; entityType?: string; q?: string; page?: string }>
 }) {
   await requireAdmin()
   const sp = await searchParams
-  const logs = await listAuditLogs({ action: sp.action, search: sp.q })
-  const allActions = await getAuditActions()
-  const integrity = await verifyAuditLogIntegrity(500)
+  const currentPage = Math.max(1, parseInt(sp.page || "1", 10) || 1)
+  const skip = (currentPage - 1) * PAGE_SIZE
+  const filters = { action: sp.action, entityType: sp.entityType, search: sp.q }
+
+  const [logs, totalCount, allActions, allEntityTypes, integrity] = await Promise.all([
+    listAuditLogs(filters, PAGE_SIZE, skip),
+    countAuditLogs(filters),
+    getAuditActions(),
+    getAuditEntityTypes(),
+    verifyAuditLogIntegrity(),
+  ])
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
+
+  function buildPageHref(page: number) {
+    const params = new URLSearchParams()
+    if (sp.action) params.set("action", sp.action)
+    if (sp.entityType) params.set("entityType", sp.entityType)
+    if (sp.q) params.set("q", sp.q)
+    if (page > 1) params.set("page", String(page))
+    const qs = params.toString()
+    return qs ? `?${qs}` : "?"
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Audit-Log</h1>
-      </div>
+      <PageHeader title="Audit-Log" icon={ShieldCheck} />
 
       {integrity.valid ? (
         <Card className="border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/50 dark:bg-emerald-950/20">
@@ -75,12 +103,24 @@ export default async function AuditLogPage({
             <select
               name="action"
               defaultValue={sp.action || ""}
-              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+              className="h-9 rounded-md border border-border bg-background px-3 text-sm"
             >
               <option value="">Alle Aktionen</option>
               {allActions.map((a) => (
                 <option key={a} value={a}>
                   {a}
+                </option>
+              ))}
+            </select>
+            <select
+              name="entityType"
+              defaultValue={sp.entityType || ""}
+              className="h-9 rounded-md border border-border bg-background px-3 text-sm"
+            >
+              <option value="">Alle Entitätstypen</option>
+              {allEntityTypes.map((et) => (
+                <option key={et} value={et}>
+                  {et}
                 </option>
               ))}
             </select>
@@ -94,8 +134,8 @@ export default async function AuditLogPage({
             <Button type="submit" variant="secondary" size="sm">
               Filtern
             </Button>
-            {(sp.action || sp.q) && (
-              <a href="?" className="text-sm text-blue-600 hover:underline">
+            {(sp.action || sp.entityType || sp.q) && (
+              <a href="?" className="text-sm text-primary hover:underline">
                 Filter zurücksetzen
               </a>
             )}
@@ -104,12 +144,34 @@ export default async function AuditLogPage({
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Letzte Einträge (max. 100)</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+          <CardTitle className="text-base">
+            Einträge ({totalCount} gesamt · Seite {currentPage} von {totalPages})
+          </CardTitle>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              {currentPage > 1 && (
+                <Link href={buildPageHref(currentPage - 1)}>
+                  <Button variant="outline" size="sm" type="button">
+                    <ChevronLeft className="mr-1 size-4" />
+                    Vorherige
+                  </Button>
+                </Link>
+              )}
+              {currentPage < totalPages && (
+                <Link href={buildPageHref(currentPage + 1)}>
+                  <Button variant="outline" size="sm" type="button">
+                    Nächste
+                    <ChevronRight className="ml-1 size-4" />
+                  </Button>
+                </Link>
+              )}
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {logs.length === 0 ? (
-            <p className="text-sm text-gray-500 py-4 text-center">Keine Einträge gefunden.</p>
+            <p className="text-sm text-muted-foreground py-4 text-center">Keine Einträge gefunden.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -125,22 +187,22 @@ export default async function AuditLogPage({
               <TableBody>
                 {logs.map((log) => (
                   <TableRow key={log.id}>
-                    <TableCell className="whitespace-nowrap text-sm text-gray-500">
+                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                       {new Date(log.createdAt).toLocaleString("de-DE")}
                     </TableCell>
                     <TableCell className="text-sm">
                       <div>{log.user?.name ?? log.user?.email ?? "System"}</div>
                       {log.ipAddress && (
-                        <div className="font-mono text-xs text-gray-400">IP: {log.ipAddress}</div>
+                        <div className="font-mono text-xs text-muted-foreground">IP: {log.ipAddress}</div>
                       )}
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">{log.action}</Badge>
                     </TableCell>
-                    <TableCell className="text-sm font-mono text-gray-600">
+                    <TableCell className="text-sm font-mono text-muted-foreground">
                       {log.entityType}
                       <br />
-                      <span className="text-xs text-gray-400">{log.entityId}</span>
+                      <span className="text-xs text-muted-foreground/70">{log.entityId}</span>
                     </TableCell>
                     <TableCell className="text-xs font-mono text-muted-foreground whitespace-nowrap">
                       {log.recordHash ? (
@@ -152,17 +214,17 @@ export default async function AuditLogPage({
                           {log.recordHash.slice(0, 8)}…
                         </span>
                       ) : (
-                        <span className="text-gray-400 italic">Unversiegelt</span>
+                        <span className="text-muted-foreground italic">Unversiegelt</span>
                       )}
                     </TableCell>
                     <TableCell className="text-xs">
                       {log.before && (
-                        <div className="mb-1 text-red-600">
+                        <div className="mb-1 text-destructive">
                           - {JSON.stringify(log.before)}
                         </div>
                       )}
                       {log.after && (
-                        <div className="text-green-700">
+                        <div className="text-emerald-700 dark:text-emerald-400">
                           + {JSON.stringify(log.after)}
                         </div>
                       )}

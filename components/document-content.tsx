@@ -9,11 +9,11 @@ export function DocumentContent({ content }: { content: string | null }) {
   const text = contentToText(content)
 
   if (!text.trim()) {
-    return <p className="text-sm text-gray-400">Kein Inhalt.</p>
+    return <p className="text-sm text-muted-foreground">Kein Inhalt.</p>
   }
 
   return (
-    <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800">
+    <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
       {text}
     </div>
   )

@@ -96,12 +96,12 @@ export function AvatarCropper({
   return (
     <div className="space-y-4">
       {success && (
-        <div className="rounded-md bg-green-50 p-3 text-sm text-green-800 flex items-center gap-2">
+        <div className="flex items-center gap-2 rounded-md border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-400">
           <Check className="size-4" /> {success}
         </div>
       )}
       {error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-800 flex items-center gap-2">
+        <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
           <X className="size-4" /> {error}
         </div>
       )}
@@ -113,10 +113,10 @@ export function AvatarCropper({
             email={userEmail}
             storageKey={currentAvatarKey}
             size="xl"
-            className="ring-4 ring-blue-50"
+            className="ring-4 ring-primary/10"
           />
           <div className="space-y-3 flex-1 text-center sm:text-left">
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-muted-foreground">
               Lade ein quadratisches Profilbild hoch (JPG, PNG oder WebP, max. 10 MB).
               Du kannst das Bild vor dem Speichern zuschneiden und anpassen.
             </div>
@@ -146,7 +146,7 @@ export function AvatarCropper({
                   size="sm"
                   onClick={handleRemove}
                   disabled={loading}
-                  className="border-red-200 text-red-700 hover:bg-red-50"
+                  className="border-destructive/30 text-destructive hover:bg-destructive/10"
                 >
                   <Trash2 className="size-4 mr-2" />
                   Entfernen
