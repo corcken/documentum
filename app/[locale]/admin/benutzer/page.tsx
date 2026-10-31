@@ -153,15 +153,15 @@ export default async function BenutzerAdminPage({
       </form>
 
       <div className="rounded-lg border border-border bg-card">
-        <Table>
+        <Table className="w-full table-fixed min-w-[800px]">
           <TableHeader>
             <TableRow>
-              <TableHead>Benutzer</TableHead>
-              <TableHead>Organisationseinheit & Bereichsrollen</TableHead>
-              <TableHead>Job-Rolle</TableHead>
-              <TableHead>System-Rolle</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Aktionen</TableHead>
+              <TableHead className="w-[24%]">Benutzer</TableHead>
+              <TableHead className="w-[28%]">Organisationseinheit & Bereichsrollen</TableHead>
+              <TableHead className="w-[14%]">Job-Rolle</TableHead>
+              <TableHead className="w-[11%]">System-Rolle</TableHead>
+              <TableHead className="w-[11%]">Status</TableHead>
+              <TableHead className="w-[12%] text-right">Aktionen</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -178,28 +178,28 @@ export default async function BenutzerAdminPage({
 
               return (
                 <TableRow key={u.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2.5">
+                  <TableCell className="truncate">
+                    <div className="flex items-center gap-2.5 truncate">
                       <UserAvatar
                         name={u.name}
                         email={u.email}
                         storageKey={avatarMap.get(u.id)}
                         size="sm"
                       />
-                      <div>
-                        <div className="flex items-center gap-1.5 font-medium">
-                          <span>{u.name || "—"}</span>
+                      <div className="truncate">
+                        <div className="flex items-center gap-1.5 font-medium truncate">
+                          <span className="truncate">{u.name || "—"}</span>
                           {u.isExternal && (
-                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                            <Badge variant="secondary" className="shrink-0 text-[10px] px-1.5 py-0">
                               Extern
                             </Badge>
                           )}
                         </div>
-                        <div className="text-xs text-muted-foreground">{u.email}</div>
+                        <div className="text-xs text-muted-foreground truncate">{u.email}</div>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell className="text-sm whitespace-normal break-words">
                     <div className="text-foreground">{u.department?.name ?? "—"}</div>
                     {(u.departmentLeads.length > 0 || u.departmentRoleAssignments.length > 0) && (
                       <div className="mt-1 flex flex-wrap gap-1">
@@ -216,15 +216,17 @@ export default async function BenutzerAdminPage({
                       </div>
                     )}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{u.jobRole?.name ?? "—"}</TableCell>
-                  <TableCell>
+                  <TableCell className="text-sm text-muted-foreground truncate" title={u.jobRole?.name ?? undefined}>
+                    {u.jobRole?.name ?? "—"}
+                  </TableCell>
+                  <TableCell className="truncate">
                     {u.role ? (
                       <Badge variant="outline">{u.role.name}</Badge>
                     ) : (
                       <span className="text-sm text-muted-foreground">—</span>
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="whitespace-normal">
                     <div className="flex flex-wrap items-center gap-1.5">
                       {u.isActive ? (
                         <Badge

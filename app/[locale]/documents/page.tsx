@@ -82,16 +82,16 @@ export default async function DocumentsPage({
       </form>
 
       <div className="rounded-lg border border-border bg-card">
-        <Table>
+        <Table className="w-full table-fixed min-w-[720px]">
           <TableHeader>
             <TableRow>
-              <TableHead>Nummer</TableHead>
-              <TableHead>Titel</TableHead>
-              <TableHead>Typ</TableHead>
-              <TableHead>Version</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Gültig ab</TableHead>
-              <TableHead className="text-right">Aktion</TableHead>
+              <TableHead className="w-[15%]">Nummer</TableHead>
+              <TableHead className="w-[33%]">Titel</TableHead>
+              <TableHead className="w-[14%]">Typ</TableHead>
+              <TableHead className="w-[9%]">Version</TableHead>
+              <TableHead className="w-[12%]">Status</TableHead>
+              <TableHead className="w-[10%]">Gültig ab</TableHead>
+              <TableHead className="w-[7%] text-right">Aktion</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -106,25 +106,29 @@ export default async function DocumentsPage({
               const v = d.currentVersion
               return (
                 <TableRow key={d.id}>
-                  <TableCell className="font-mono">
-                    <div className="flex items-center gap-1.5">
-                      <span>{d.documentNumber}</span>
+                  <TableCell className="font-mono truncate">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <span className="truncate">{d.documentNumber}</span>
                       {d.isTemplate && (
-                        <Badge variant="outline" className="border-primary/30 bg-primary/10 px-1 py-0 text-[10px] text-primary">
+                        <Badge variant="outline" className="shrink-0 border-primary/30 bg-primary/10 px-1 py-0 text-[10px] text-primary">
                           Vorlage
                         </Badge>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="max-w-md truncate">{v?.title ?? "—"}</TableCell>
-                  <TableCell>{d.type?.name ?? "—"}</TableCell>
-                  <TableCell>
+                  <TableCell className="truncate" title={v?.title ?? undefined}>
+                    {v?.title ?? "—"}
+                  </TableCell>
+                  <TableCell className="truncate" title={d.type?.name ?? undefined}>
+                    {d.type?.name ?? "—"}
+                  </TableCell>
+                  <TableCell className="truncate">
                     {v ? formatVersion(v.majorVersion, v.minorVersion) : "—"}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="truncate">
                     {v && <StatusBadge status={v.status} />}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className="text-sm text-muted-foreground truncate">
                     {v?.effectiveDate ? new Date(v.effectiveDate).toLocaleDateString("de-DE") : "—"}
                   </TableCell>
                   <TableCell className="text-right">

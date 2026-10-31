@@ -90,15 +90,15 @@ export default async function ArchivPage({
       )}
 
       <div className="rounded-lg border border-border bg-card">
-        <Table>
+        <Table className="w-full table-fixed min-w-[780px]">
           <TableHeader>
             <TableRow>
-              <TableHead>Dokument</TableHead>
-              <TableHead>Version</TableHead>
-              <TableHead>Ersetzt / Zurückgezogen am</TableHead>
-              <TableHead>Frist-Ende</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Aktion</TableHead>
+              <TableHead className="w-[32%]">Dokument</TableHead>
+              <TableHead className="w-[9%]">Version</TableHead>
+              <TableHead className="w-[17%]">Ersetzt / Zurückgezogen am</TableHead>
+              <TableHead className="w-[13%]">Frist-Ende</TableHead>
+              <TableHead className="w-[13%]">Status</TableHead>
+              <TableHead className="w-[16%] text-right">Aktion</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -123,17 +123,17 @@ export default async function ArchivPage({
 
               return (
                 <TableRow key={v.id}>
-                  <TableCell className="font-medium">
-                    <div className="font-mono text-muted-foreground">{v.document.documentNumber}</div>
-                    <Link href={`/documents/${v.documentId}`} className="hover:underline">
+                  <TableCell className="font-medium truncate">
+                    <div className="font-mono text-xs text-muted-foreground truncate">{v.document.documentNumber}</div>
+                    <Link href={`/documents/${v.documentId}`} className="hover:underline truncate block" title={v.title}>
                       {v.title}
                     </Link>
                   </TableCell>
-                  <TableCell>v{formatVersion(v.majorVersion, v.minorVersion)}</TableCell>
-                  <TableCell>
+                  <TableCell className="truncate">v{formatVersion(v.majorVersion, v.minorVersion)}</TableCell>
+                  <TableCell className="truncate">
                     {v.obsoleteDate ? new Date(v.obsoleteDate).toLocaleDateString("de-DE") : "—"}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="truncate">
                     {v.retentionEndDate ? (
                       <span className={isRetentionExpired ? "text-destructive font-medium" : ""}>
                         {new Date(v.retentionEndDate).toLocaleDateString("de-DE")}
@@ -142,7 +142,7 @@ export default async function ArchivPage({
                       "—"
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="whitespace-normal">
                     <div className="flex flex-wrap items-center gap-1.5">
                       <StatusBadge status={v.status} />
                       {v.status !== "Destroyed" && (
@@ -162,7 +162,7 @@ export default async function ArchivPage({
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right whitespace-normal">
                     {canRequestDestruction && (
                       <form action={requestDestructionAction} className="flex flex-col gap-2 items-end">
                         <input type="hidden" name="versionId" value={v.id} />

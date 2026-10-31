@@ -31,14 +31,14 @@ export function DocumentVersionHistory({
         <CardTitle className="text-base">Versionen</CardTitle>
       </CardHeader>
       <CardContent>
-        <Table>
+        <Table className="w-full table-fixed min-w-[640px]">
           <TableHeader>
             <TableRow>
-              <TableHead>Version</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Erstellt</TableHead>
-              <TableHead>Von</TableHead>
-              <TableHead className="text-right">Aktionen</TableHead>
+              <TableHead className="w-[32%]">Version</TableHead>
+              <TableHead className="w-[16%]">Status</TableHead>
+              <TableHead className="w-[18%]">Erstellt</TableHead>
+              <TableHead className="w-[18%]">Von</TableHead>
+              <TableHead className="w-[16%] text-right">Aktionen</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -48,23 +48,23 @@ export function DocumentVersionHistory({
                 !isViewer && currentStatus === "Draft" && v.id !== currentVersionId
               return (
                 <TableRow key={v.id}>
-                  <TableCell>
+                  <TableCell className="truncate">
                     <div className="font-mono">
                       {formatVersion(v.majorVersion, v.minorVersion)}
                     </div>
                     {v.changeReason && (
                       <div
-                        className="mt-1 text-xs text-muted-foreground italic max-w-xs truncate"
+                        className="mt-1 text-xs text-muted-foreground italic truncate block"
                         title={v.changeReason}
                       >
                         {v.changeReason}
                       </div>
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="truncate">
                     <StatusBadge status={v.status} />
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className="text-sm text-muted-foreground truncate">
                     {new Date(v.createdAt).toLocaleDateString("de-DE")}
                     {v.nextReviewDate && v.nextReviewDate <= new Date() && (
                       <Badge variant="destructive" className="ml-2">
@@ -72,15 +72,15 @@ export function DocumentVersionHistory({
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1.5">
+                  <TableCell className="text-sm text-muted-foreground truncate">
+                    <div className="flex items-center gap-1.5 truncate">
                       <UserAvatar
                         name={v.createdBy?.name}
                         email={v.createdBy?.email}
                         storageKey={v.createdById ? avatarMap.get(v.createdById) : null}
                         size="sm"
                       />
-                      <span>{v.createdBy?.name ?? v.createdBy?.email ?? "—"}</span>
+                      <span className="truncate">{v.createdBy?.name ?? v.createdBy?.email ?? "—"}</span>
                     </div>
                   </TableCell>
                   <TableCell className="text-right">

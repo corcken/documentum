@@ -50,14 +50,14 @@ export default async function PrueffaelligPage() {
       <PageHeader title="Prüffällige Dokumente" icon={AlertCircle} iconClassName="text-destructive" />
 
       <div className="rounded-lg border border-border bg-card">
-        <Table>
+        <Table className="w-full table-fixed min-w-[700px]">
           <TableHeader>
             <TableRow>
-              <TableHead>Nummer</TableHead>
-              <TableHead>Titel</TableHead>
-              <TableHead>Eigentümer</TableHead>
-              <TableHead>Fällig seit</TableHead>
-              <TableHead className="text-right">Aktion</TableHead>
+              <TableHead className="w-[18%]">Nummer</TableHead>
+              <TableHead className="w-[38%]">Titel</TableHead>
+              <TableHead className="w-[18%]">Eigentümer</TableHead>
+              <TableHead className="w-[14%]">Fällig seit</TableHead>
+              <TableHead className="w-[12%] text-right">Aktion</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -70,13 +70,13 @@ export default async function PrueffaelligPage() {
             )}
             {visibleDocs.map(({ doc, currentVersion: v }) => (
               <TableRow key={doc.id}>
-                <TableCell className="font-mono">{doc.documentNumber}</TableCell>
-                <TableCell className="max-w-md truncate font-medium">
-                  {v.title}
+                <TableCell className="font-mono truncate">{doc.documentNumber}</TableCell>
+                <TableCell className="truncate font-medium" title={v.title}>
+                  <span>{v.title}</span>
                   <span className="ml-2 text-xs text-muted-foreground">v{formatVersion(v.majorVersion, v.minorVersion)}</span>
                 </TableCell>
-                <TableCell>{doc.owner?.name ?? doc.owner?.email ?? "—"}</TableCell>
-                <TableCell>
+                <TableCell className="truncate">{doc.owner?.name ?? doc.owner?.email ?? "—"}</TableCell>
+                <TableCell className="truncate">
                   <Badge variant="destructive">
                     {v.nextReviewDate ? new Date(v.nextReviewDate).toLocaleDateString("de-DE") : "—"}
                   </Badge>

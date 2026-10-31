@@ -38,15 +38,15 @@ export default async function AufgabenPage() {
               Keine offenen Aufgaben — alles erledigt. 🎉
             </p>
           ) : (
-            <Table>
+            <Table className="w-full table-fixed min-w-[720px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Art</TableHead>
-                  <TableHead>Dokument</TableHead>
-                  <TableHead>Titel</TableHead>
-                  <TableHead>Version</TableHead>
-                  <TableHead>Eingereicht von</TableHead>
-                  <TableHead className="text-right">Aktion</TableHead>
+                  <TableHead className="w-[12%]">Art</TableHead>
+                  <TableHead className="w-[15%]">Dokument</TableHead>
+                  <TableHead className="w-[35%]">Titel</TableHead>
+                  <TableHead className="w-[10%]">Version</TableHead>
+                  <TableHead className="w-[18%]">Eingereicht von</TableHead>
+                  <TableHead className="w-[10%] text-right">Aktion</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -54,27 +54,29 @@ export default async function AufgabenPage() {
                   const v = t.documentVersion
                   return (
                     <TableRow key={t.id}>
-                      <TableCell>
+                      <TableCell className="truncate">
                         <Badge variant={t.taskType === "Approval" ? "secondary" : "outline"}>
                           {TASK_LABELS[t.taskType] ?? t.taskType}
                         </Badge>
                       </TableCell>
-                      <TableCell className="font-mono">
+                      <TableCell className="font-mono truncate">
                         {v.document.documentNumber}
                       </TableCell>
-                      <TableCell className="max-w-md truncate">{v.title}</TableCell>
-                      <TableCell className="font-mono">
+                      <TableCell className="truncate" title={v.title}>
+                        {v.title}
+                      </TableCell>
+                      <TableCell className="font-mono truncate">
                         {formatVersion(v.majorVersion, v.minorVersion)}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1.5">
+                      <TableCell className="text-sm text-muted-foreground truncate">
+                        <div className="flex items-center gap-1.5 truncate">
                           <UserAvatar
                             name={v.createdBy?.name}
                             email={v.createdBy?.email}
                             storageKey={v.createdBy?.id ? avatarMap.get(v.createdBy.id) : null}
                             size="sm"
                           />
-                          <span>{v.createdBy?.name ?? v.createdBy?.email ?? "—"}</span>
+                          <span className="truncate">{v.createdBy?.name ?? v.createdBy?.email ?? "—"}</span>
                         </div>
                       </TableCell>
                       <TableCell className="text-right">

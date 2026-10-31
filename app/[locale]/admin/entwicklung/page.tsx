@@ -221,15 +221,15 @@ export default async function EntwicklungPage({
 
           {/* Benutzer-Tabelle */}
           <div className="rounded-lg border bg-card">
-            <Table>
+            <Table className="w-full table-fixed min-w-[760px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("thUser")}</TableHead>
-                  <TableHead>{t("thRole")}</TableHead>
-                  <TableHead>{t("thDepartment")}</TableHead>
-                  <TableHead>{t("thJobRole")}</TableHead>
-                  <TableHead>{t("thTasks")}</TableHead>
-                  <TableHead className="text-right">{t("thAction")}</TableHead>
+                  <TableHead className="w-[24%]">{t("thUser")}</TableHead>
+                  <TableHead className="w-[12%]">{t("thRole")}</TableHead>
+                  <TableHead className="w-[22%]">{t("thDepartment")}</TableHead>
+                  <TableHead className="w-[16%]">{t("thJobRole")}</TableHead>
+                  <TableHead className="w-[12%]">{t("thTasks")}</TableHead>
+                  <TableHead className="w-[14%] text-right">{t("thAction")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -244,11 +244,11 @@ export default async function EntwicklungPage({
                     const isCurrent = u.id === currentAdminId
                     return (
                       <TableRow key={u.id}>
-                        <TableCell>
-                          <div className="font-medium text-foreground">{u.name || "—"}</div>
-                          <div className="text-xs text-muted-foreground">{u.email}</div>
+                        <TableCell className="truncate">
+                          <div className="font-medium text-foreground truncate">{u.name || "—"}</div>
+                          <div className="text-xs text-muted-foreground truncate">{u.email}</div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="truncate">
                           {u.roleName ? (
                             <Badge
                               variant="outline"
@@ -266,13 +266,13 @@ export default async function EntwicklungPage({
                             <span className="text-xs text-muted-foreground">—</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
+                        <TableCell className="text-sm text-muted-foreground truncate" title={u.departmentName ?? undefined}>
                           {u.departmentName ?? "—"}
                         </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
+                        <TableCell className="text-sm text-muted-foreground truncate" title={u.jobRoleName ?? undefined}>
                           {u.jobRoleName ?? "—"}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="truncate">
                           {u.openTaskCount > 0 ? (
                             <Badge variant="secondary" className="gap-1 bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
                               <ClipboardList className="size-3" />

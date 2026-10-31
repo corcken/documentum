@@ -173,38 +173,39 @@ export default async function AuditLogPage({
           {logs.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">Keine Einträge gefunden.</p>
           ) : (
-            <Table>
+            <Table className="w-full table-fixed min-w-[850px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Wann</TableHead>
-                  <TableHead>Wer</TableHead>
-                  <TableHead>Aktion</TableHead>
-                  <TableHead>Entität</TableHead>
-                  <TableHead>Siegel (HMAC)</TableHead>
-                  <TableHead>Änderung</TableHead>
+                  <TableHead className="w-[13%]">Wann</TableHead>
+                  <TableHead className="w-[16%]">Wer</TableHead>
+                  <TableHead className="w-[14%]">Aktion</TableHead>
+                  <TableHead className="w-[15%]">Entität</TableHead>
+                  <TableHead className="w-[12%]">Siegel (HMAC)</TableHead>
+                  <TableHead className="w-[30%]">Änderung</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {logs.map((log) => (
                   <TableRow key={log.id}>
-                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                    <TableCell className="text-xs text-muted-foreground truncate">
                       {new Date(log.createdAt).toLocaleString("de-DE")}
                     </TableCell>
-                    <TableCell className="text-sm">
-                      <div>{log.user?.name ?? log.user?.email ?? "System"}</div>
+                    <TableCell className="text-sm truncate">
+                      <div className="truncate" title={log.user?.name ?? log.user?.email ?? "System"}>
+                        {log.user?.name ?? log.user?.email ?? "System"}
+                      </div>
                       {log.ipAddress && (
-                        <div className="font-mono text-xs text-muted-foreground">IP: {log.ipAddress}</div>
+                        <div className="font-mono text-xs text-muted-foreground truncate">IP: {log.ipAddress}</div>
                       )}
                     </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{log.action}</Badge>
+                    <TableCell className="truncate">
+                      <Badge variant="outline" className="truncate">{log.action}</Badge>
                     </TableCell>
-                    <TableCell className="text-sm font-mono text-muted-foreground">
-                      {log.entityType}
-                      <br />
-                      <span className="text-xs text-muted-foreground/70">{log.entityId}</span>
+                    <TableCell className="text-xs font-mono text-muted-foreground whitespace-normal break-all">
+                      <div>{log.entityType}</div>
+                      <span className="text-[11px] text-muted-foreground/70">{log.entityId}</span>
                     </TableCell>
-                    <TableCell className="text-xs font-mono text-muted-foreground whitespace-nowrap">
+                    <TableCell className="text-xs font-mono text-muted-foreground truncate">
                       {log.recordHash ? (
                         <span
                           className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 cursor-help"
@@ -217,7 +218,7 @@ export default async function AuditLogPage({
                         <span className="text-muted-foreground italic">Unversiegelt</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-xs">
+                    <TableCell className="text-xs font-mono whitespace-normal break-all">
                       {log.before && (
                         <div className="mb-1 text-destructive">
                           - {JSON.stringify(log.before)}
